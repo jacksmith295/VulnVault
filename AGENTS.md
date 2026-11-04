@@ -50,7 +50,7 @@ Development is local for now. Use the existing Next.js application and local Pos
 ## UI components and theme
 
 - Pages and feature components should return reusable TSX components rather than raw HTML such as `div`, `p`, native form controls, or independently styled links. Keep semantic HTML in shared UI and layout component definitions.
-- ESLint enforces component-based JSX and central styling in routes and features. The root document layout is exempt for its required HTML/body structure. Add a shared component or variant when the rule flags a new presentation need.
+- ESLint enforces component-based JSX and central styling in routes and features, for both JSX and TSX files. The root document layout is exempt for its required HTML/body structure. Add a shared component or variant when the rule flags a new presentation need.
 - Build interactive controls on the installed Base UI primitives. Reuse styled wrappers from `components/ui` rather than adding feature-specific native controls or custom interaction listeners.
 - Keep Tailwind classes in shared component definitions. Expose typed variants for recurring differences; avoid cosmetic `className` overrides in pages and features.
 - Theme values belong in global semantic tokens. Maintain the green application identity consistently in light and dark modes, with a persisted system/light/dark preference.
@@ -86,7 +86,8 @@ Tests require the separate Compose test database and `TEST_DATABASE_URL`. Browse
 - Do not push feature work directly to main. Do not merge PRs without the user's approval.
 - Before opening a PR, review the changes independently and address findings. Include a concise description of resulting behaviour, validation evidence, and remaining risks.
 - Leave the PR ready for the user's review. Summarise substantive agent review findings and their resolution.
-- Git hooks and automated repository rules will be designed later. Do not invent mandatory tools or claim checks exist before they are configured.
+- Install the repository pre-commit hook with `npm run hooks:install` (also run by npm `prepare`). It checks staged route/feature JSX and TSX against ESLint, including the native HTML and styling restrictions. Preserve existing custom hooks if installation reports a conflict.
+- Use `npm run hooks:check` to inspect the staged index and `npm run test:hooks` for isolated hook regression tests. Fix and stage violations before committing; do not bypass the hook to get a failing commit through.
 
 ## Local environment
 

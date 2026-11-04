@@ -75,3 +75,22 @@ The green theme supports Light, Dark, and System from the theme menu on both pub
 ## Delivery
 
 Work on feature branches, with implementation and independent review agents. PRs include behaviour changes and validation evidence and remain for the user's approval before merging. Public deployment is outside the current scope.
+
+### Commit checks
+
+`npm ci` and `npm install` set up the versioned `.githooks` directory through the `prepare` script. For an existing checkout, install explicitly:
+
+```sh
+npm run hooks:install
+```
+
+The pre-commit hook lints staged JSX/TSX files under `src/app` and `src/features` using the existing ESLint rules. Native HTML and cosmetic `className` overrides are rejected there; shared UI/layout definitions and the root `src/app/layout.tsx` document keep their existing exemptions. All ESLint errors and warnings in the selected files block the commit.
+
+Only staged source contents are checked. Partially staged files are handled without editing, stashing, or staging your working files. ESLint configuration and installed dependencies are read from the current working tree. Unresolved merges and unavailable checks fail rather than silently allowing a commit.
+
+```sh
+npm run hooks:check
+npm run test:hooks
+```
+
+The first command checks the current index. The second runs isolated Git fixtures, including real commit rejection, without PostgreSQL or development data. The installer only changes repository-local Git configuration and preserves existing custom hook setups; if one exists, it reports the conflict so the checks can be integrated explicitly. This is a local commit guard, rather than server-side branch enforcement.
