@@ -10,6 +10,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "VulnVault",
   description: "Vulnerability Management Platform",
+  referrer: "no-referrer",
 };
 
 export default function RootLayout({

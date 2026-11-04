@@ -1,8 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   reactCompiler: true,
+  // Keep our reviewed working agreements stable when starting development.
+  agentRules: false,
 };
 
 export default nextConfig;

@@ -8,6 +8,13 @@
       "when": 1793004630521,
       "tag": "0000_early_bucky",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793803612065,
+      "tag": "0001_lazy_mesmero",
+      "breakpoints": true
     }
   ]
 }

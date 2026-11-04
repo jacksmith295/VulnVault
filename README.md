@@ -1,207 +1,69 @@
 # VulnVault
 
-A full-stack Next.js app. Run all commands from the repository root.
+VulnVault tracks vulnerabilities across services and repositories, with a dedicated workflow for triage and remediation. Development is local first. The current implementation slice adds email/password authentication; workspace onboarding, services, and findings follow incrementally.
 
-## Workspace layout
+See [working agreements](AGENTS.md), [the MVP plan](docs/mvp-plan.md), and [the authentication/workspace design](docs/auth-workspace-design.md).
 
-```text
-src/
-  app/          Next.js routes, layouts, and pages
-  components/   Shared UI components
-  features/     Feature components and validation schemas
-  db/           Server-only database connection and Drizzle schema
-  lib/          Shared utilities
-public/         Static assets
-drizzle/        SQL migrations and schema snapshots
-compose.yaml    Local PostgreSQL service
-drizzle.config.ts
-package.json
-```
+## Local setup
 
-Server Actions can live alongside the feature they serve. Route Handlers belong
-under `src/app`; both can use `src/db` for database access.
-
-## Start development
-
-Install dependencies with `npm install`. On a new checkout, copy `.env.example`
-to `.env.local`, then run:
+Requirements: Node.js 24 LTS, npm, Docker Engine, and Docker Compose. Run all commands from the repository root.
 
 ```sh
 docker compose up -d --wait
+npm ci
+cp .env.example .env.local
+openssl rand -hex 32
+```
+
+Replace `BETTER_AUTH_SECRET` in `.env.local` with the generated value. The example database and SMTP settings match Compose. Keep `BETTER_AUTH_URL=http://localhost:3000` and open the application at that exact origin.
+
+```sh
 npm run db:migrate
 npm run dev
 ```
 
-Open http://localhost:3000. Use `npm run lint` to check lint rules and
-`npm run build` to create a production build.
+Open [VulnVault](http://localhost:3000) and the [development inbox](http://localhost:8025). Register, open the verification email in Mailpit, follow its link, and log in. Password reset emails also appear in Mailpit. These messages stay local; the inbox does not deliver to real recipients.
 
-## Local database
+Registration creates an account without creating a workspace. The protected dashboard is an account landing page until workspace onboarding is implemented. The database includes the workspace membership foundation, but workspace operations are disabled during this slice.
 
-Start PostgreSQL with Docker Desktop running:
+Compose exposes PostgreSQL at `localhost:5432`, SMTP at `127.0.0.1:1025`, and the inbox at `127.0.0.1:8025`. Its credentials are development-only. PostgreSQL data persists in the `vulnvault_postgres_data` volume. Stop infrastructure with `docker compose stop`; do not remove its volume unless you intend to erase development data.
 
-```sh
-docker compose up -d --wait
-```
+## Verification
 
-Connection details:
-
-- Host: `localhost`
-- Port: `5432`
-- Database: `vulnvault`
-- Username: `vulnvault`
-- Password: `vulnvault`
-- Connection URL: `postgresql://vulnvault:vulnvault@localhost:5432/vulnvault`
-
-These credentials are for local development. The port is bound to localhost.
-Data persists in a Docker volume across container restarts and shutdowns.
-Starting Docker alone does not apply application migrations; run the Drizzle
-migration command below after starting a fresh database.
-
-Open a SQL shell:
+Start the separate, disposable test database from the repository root:
 
 ```sh
-docker compose exec db psql -U vulnvault -d vulnvault
+docker compose --profile test up -d --wait
 ```
 
-Stop the database (keeping its data):
+Then, from the repository root:
 
 ```sh
-docker compose down
+npm run lint
+npm run typecheck
+npm test
+npm run build
+npx playwright install chromium
+npm run test:e2e
 ```
 
-To delete all local database data and start fresh:
+Set `TEST_DATABASE_URL` as shown in `.env.example`. Tests use the isolated database on port `55433`, never the application database. Integration tests manage their own fixtures and migrations. Browser tests start a separate application server on port `3100` against the test database, apply its migrations, and use Mailpit for real verification and recovery flows. Run integration and browser suites sequentially. Install Playwright's system dependencies if your OS requires them.
 
-```sh
-docker compose down -v
-docker compose up -d --wait
-```
+The test database uses temporary container storage; its contents are disposable. Browser tests use unique email addresses and do not clear the development inbox. Browser artifacts are ignored by Git and may contain sensitive test data; do not publish them indiscriminately.
 
-## Drizzle and Next.js
+## Database changes
 
-The full-stack Next.js app lives at the repository root. All database access belongs in
-server code (Server Actions, Route Handlers, or Server Components).
-
-### Setup on a new checkout
-
-Start PostgreSQL from the repository root, then:
-
-```sh
-npm install
-```
-
-Copy `.env.example` to `.env.local` in this directory. It contains:
-
-```dotenv
-DATABASE_URL=postgresql://vulnvault:vulnvault@localhost:5432/vulnvault
-```
-
-Keep `.env.local` private. Never prefix this variable with `NEXT_PUBLIC_`;
-it contains database credentials and is only needed on the server.
-
-Apply the committed migrations:
-
-```sh
-npm run db:migrate
-```
-
-### What each part does
-
-- `src/db/schema.ts`: TypeScript definitions of tables and their constraints.
-  The schema also gives Drizzle enough information to type-check queries.
-- `src/db/index.ts`: a server-only Drizzle connection using a `pg` connection
-  pool. A pool reuses database connections; during development it is reused
-  across Next.js hot reloads.
-- `drizzle.config.ts`: tells Drizzle Kit the database dialect, schema location,
-  migration output directory, and connection URL. It loads Next.js env files.
-- `drizzle/`: generated SQL migrations and schema snapshots. Commit these
-  files so other checkouts can apply the same database changes.
-
-Drizzle ORM is the query library used by the app. Drizzle Kit is the CLI that
-generates and applies migrations. `pg` is the driver that talks to PostgreSQL.
-
-### Users table
-
-| TypeScript field | PostgreSQL column | Meaning |
-| --- | --- | --- |
-| `id` | `id` | UUID primary key, generated by PostgreSQL when omitted |
-| `fullName` | `full_name` | Required text |
-| `email` | `email` | Required, unique text |
-| `passwordHash` | `password_hash` | Required text containing a password hash |
-
-`notNull()` means a column cannot contain SQL NULL. It does not validate email
-format or prevent empty strings; validate incoming data on the server.
-The email uniqueness constraint currently compares exact values. Normalize
-emails consistently (for example, trim and lowercase) in registration and login.
-
-UUIDs identify users independently of their names or emails. The database
-generates them, so inserts need only supply the other three fields.
-
-`User` is the inferred type of a selected row. `NewUser` is the inferred insert
-type, where `id` is optional because the database supplies its default.
-
-Passwords must be hashed on the server using a password-hashing library before
-inserting. Drizzle does not hash passwords automatically. Authentication and
-connecting the existing forms are separate next steps.
-
-### Querying from server code
-
-For example, inside a Server Action or Route Handler:
-
-```ts
-import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { users } from "@/db/schema";
-
-const [user] = await db
-  .select({ id: users.id, fullName: users.fullName, email: users.email })
-  .from(users)
-  .where(eq(users.email, email.trim().toLowerCase()));
-```
-
-`eq` builds a parameterized equality condition. Selecting explicit fields keeps
-the password hash out of the returned profile. A single-row lookup can return
-`undefined` when there is no matching user. Import `@/db` only in server code;
-the `server-only` guard prevents accidental use in client components.
-
-Once server-side validation and hashing are implemented, an insert takes this
-shape (`passwordHash` must already contain the hash):
-
-```ts
-const [createdUser] = await db
-  .insert(users)
-  .values({
-    fullName: fullName.trim(),
-    email: email.trim().toLowerCase(),
-    passwordHash,
-  })
-  .returning({ id: users.id, fullName: users.fullName, email: users.email });
-```
-
-### Changing the schema
-
-From the repository root, after editing `src/db/schema.ts`:
+The Drizzle schema and generated SQL migrations are versioned together. Better Auth owns the authentication and workspace-membership schema conventions. After an agreed schema change:
 
 ```sh
 npm run db:generate
-# Review the new SQL file in drizzle/ before applying it.
 npm run db:migrate
 ```
 
-`generate` compares your schema to the saved migration snapshots and writes SQL;
-it does not change the running database. `migrate` applies pending SQL migrations
-and records which migrations have run. Re-running it does not re-create tables.
-Commit both the schema change and generated migration files. Create a new
-migration for later changes rather than editing an already applied migration.
+Review generated SQL before applying it. Changes that could discard data need an explicit migration plan. Schema generation and applying migrations are separate operations; starting the app does not silently rewrite the database.
 
-Browse the database with Drizzle Studio:
+The original `0000` migration and scaffold `users` table are preserved. The additive `0001` migration creates Better Auth's tables. Existing scaffold rows remain intact but do not automatically become login accounts; their password format and verification state have not been established. Register through the application for the new authentication flow.
 
-```sh
-npm run db:studio
-```
+## Delivery
 
-Open the URL printed by the CLI. Studio connects to your configured database,
-so any data edits you make there affect your actual local data.
-
-Tables and rows persist in the Docker volume. After deliberately deleting that
-volume with `docker compose down -v`, rerun `npm run db:migrate` to rebuild tables;
-migrations do not restore deleted rows.
+Work on feature branches, with implementation and independent review agents. PRs include behaviour changes and validation evidence and remain for the user's approval before merging. Public deployment is outside the current scope.

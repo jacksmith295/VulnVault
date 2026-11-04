@@ -17,5 +17,28 @@ services:
       retries: 10
       start_period: 10s
 
+  mailpit:
+    image: axllent/mailpit:v1.27.4
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
+
+  postgres-test:
+    image: postgres:17-alpine
+    profiles: ["test"]
+    environment:
+      POSTGRES_USER: vulnvault_test
+      POSTGRES_PASSWORD: vulnvault_test_only
+      POSTGRES_DB: vulnvault_test
+    ports:
+      - "127.0.0.1:55433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vulnvault_test -d vulnvault_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
 volumes:
   postgres_data:

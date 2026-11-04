@@ -1,18 +1,16 @@
-import { loadEnvConfig } from "@next/env";
+import { config } from "dotenv";
 import { defineConfig } from "drizzle-kit";
 
-// Use the same .env files as Next.js, including .env.local.
-loadEnvConfig(process.cwd());
+config({ path: [".env.local", ".env"], quiet: true });
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL is missing. Set it in .env.local at the repository root.");
-}
+const url = process.env.DATABASE_URL;
+if (!url) throw new Error("DATABASE_URL is required for database migrations");
 
 export default defineConfig({
   dialect: "postgresql",
   schema: "./src/db/schema.ts",
   out: "./drizzle",
-  dbCredentials: {
-    url: process.env.DATABASE_URL,
-  },
+  dbCredentials: { url },
+  strict: true,
+  verbose: true,
 });
