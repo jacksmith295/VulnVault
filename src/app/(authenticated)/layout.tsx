@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { SessionMonitor } from "@/features/auth/components/SessionMonitor";
-import { WorkspaceHeader } from "@/features/workspaces/components/WorkspaceHeader";
+import { AppHeader } from "@/components/layout/AppHeader";
 import { listWorkspaces } from "@/features/workspaces/data";
 import { requireSession } from "@/lib/auth-session";
 
@@ -15,7 +15,7 @@ export default async function AuthenticatedLayout({ children }: AuthenticatedLay
   return (
     <>
       <SessionMonitor />
-      <WorkspaceHeader workspaces={workspaces} />
+      <AppHeader workspaces={workspaces} />
       {children}
     </>
   );
