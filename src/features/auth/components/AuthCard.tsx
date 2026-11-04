@@ -1,12 +1,6 @@
 import type { ReactNode } from "react";
-
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { AuthSurface, Stack } from "@/components/layout";
+import { Heading, Text } from "@/components/ui/typography";
 
 type AuthCardProps = {
   title: string;
@@ -16,12 +10,14 @@ type AuthCardProps = {
 
 export function AuthCard({ title, description, children }: AuthCardProps) {
   return (
-    <Card className="w-full max-w-md shadow-md">
-      <CardHeader>
-        <CardTitle className="text-3xl font-semibold"><h1>{title}</h1></CardTitle>
-        <CardDescription className="text-base">{description}</CardDescription>
-      </CardHeader>
-      <CardContent>{children}</CardContent>
-    </Card>
+    <AuthSurface>
+      <Stack gap="lg">
+        <Stack gap="sm">
+          <Heading level={1}>{title}</Heading>
+          <Text tone="muted">{description}</Text>
+        </Stack>
+        {children}
+      </Stack>
+    </AuthSurface>
   );
 }

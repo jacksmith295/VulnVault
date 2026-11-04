@@ -33,6 +33,13 @@ export async function login(page: Page, email: string, password: string) {
   await page.getByRole("button", { name: "Login", exact: true }).click();
 }
 
+export async function chooseTheme(page: Page, theme: "Light" | "Dark" | "System") {
+  await page.getByRole("button", { name: "Theme", exact: true }).click();
+  await page.getByRole("menuitemradio", { name: theme, exact: true }).click();
+  await expect(page.getByRole("menu")).not.toBeVisible();
+  if (theme !== "System") await expect(page.locator("html")).toHaveClass(new RegExp(`\\b${theme.toLowerCase()}\\b`, "u"));
+}
+
 export const origin = "http://127.0.0.1:3100";
 
 export function clientHeaders() {

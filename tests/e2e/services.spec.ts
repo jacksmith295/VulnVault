@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
 import { Pool } from "pg";
-import { origin, verifiedAccount } from "./helpers";
+import { chooseTheme, origin, verifiedAccount } from "./helpers";
 
 async function workspaceFixture(pool: Pool, userId: string) {
   const id = randomUUID();
@@ -31,6 +31,12 @@ test("service create, atomic edit, stale form recovery, archive and restore", as
     await expect(page.locator('a[href="https://git.example.com/Team/API.git"]')).toBeVisible();
     await expect(page.locator('a[href="http://git.internal:8080/Team/Worker"]')).toBeVisible();
     await page.goto(`${serviceURL}/edit`);
+    await page.getByLabel("Description", { exact: true }).fill("Theme-safe unsaved draft");
+    await chooseTheme(page, "Dark");
+    await expect(page.getByLabel("Description", { exact: true })).toHaveValue("Theme-safe unsaved draft");
+    await chooseTheme(page, "Light");
+    await expect(page.getByLabel("Description", { exact: true })).toHaveValue("Theme-safe unsaved draft");
+    await page.getByLabel("Description", { exact: true }).fill("The API and its worker");
     await page.getByLabel("Repository URLs", { exact: true }).fill("https://git.example.com/Team/API.git\nhttps://code.example.com/Team/Frontend");
     await page.getByRole("button", { name: "Save changes", exact: true }).click();
     await expect(page).toHaveURL(serviceURL);

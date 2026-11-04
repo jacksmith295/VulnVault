@@ -15,9 +15,9 @@ async function createWorkspace(page: Page, name: string, slug: string) {
 }
 
 async function openSelector(page: Page) {
-  const details = page.locator("header details");
-  if (await details.getAttribute("open") === null) await details.locator("summary").click();
-  return details;
+  const trigger = page.getByRole("button", { name: "Switch workspace", exact: true });
+  if (await trigger.getAttribute("aria-expanded") !== "true") await trigger.click();
+  return page.getByRole("menu");
 }
 
 test("workspace creation, persistent selector, default navigation, and independent tabs", async ({ page, context }) => {
@@ -31,28 +31,38 @@ test("workspace creation, persistent selector, default navigation, and independe
     await expect(page).toHaveURL(`${origin}/dashboard`);
     await createWorkspace(page, "Solo Projects", first);
     await expect(page.getByText("Your role: owner", { exact: true })).toBeVisible();
-    await expect(page.locator("header")).toBeVisible();
+    await expect(page.getByRole("banner")).toBeVisible();
     let selector = await openSelector(page);
-    await selector.getByRole("navigation").click({ position: { x: 4, y: 20 } });
-    await expect(selector).toHaveAttribute("open", "");
-    await page.getByRole("heading", { name: "Solo Projects", exact: true }).evaluate((heading) => {
-      heading.addEventListener("pointerdown", (event) => event.stopPropagation(), { once: true });
-    });
-    await page.getByRole("heading", { name: "Solo Projects", exact: true }).click();
-    await expect(selector).not.toHaveAttribute("open", "");
-    selector = await openSelector(page);
+    await page.keyboard.press("ArrowDown");
+    await expect(selector).toBeVisible();
+    const outside = await page.getByRole("heading", { name: "Solo Projects", exact: true }).boundingBox();
+    if (!outside) throw new Error("Expected a visible workspace heading.");
+    await page.mouse.click(outside.x + outside.width * 0.9, outside.y + outside.height / 2);
+    await expect(selector).not.toBeVisible();
+    const workspaceTrigger = page.getByRole("button", { name: "Switch workspace", exact: true });
+    await workspaceTrigger.focus();
+    await workspaceTrigger.press("ArrowDown");
+    selector = page.getByRole("menu");
+    await expect(selector.getByRole("menuitem").first()).toBeFocused();
     await page.keyboard.press("Escape");
-    await expect(selector).not.toHaveAttribute("open", "");
-    await expect(selector.locator("summary")).toBeFocused();
+    await expect(selector).not.toBeVisible();
+    await expect(page.getByRole("button", { name: "Switch workspace", exact: true })).toBeFocused();
     selector = await openSelector(page);
-    await expect(selector.getByRole("link", { name: "All workspaces", exact: true })).toBeVisible();
-    await selector.getByRole("link", { name: "Create workspace +", exact: true }).click();
+    await expect(selector.getByRole("menuitem", { name: "All workspaces", exact: true })).toBeVisible();
+    await selector.getByRole("menuitem", { name: "Create workspace +", exact: true }).click();
     await expect(page).toHaveURL(`${origin}/workspaces/new`);
     await createWorkspace(page, "Team Projects", second);
 
+    await page.setViewportSize({ width: 375, height: 812 });
     selector = await openSelector(page);
-    await selector.getByRole("link", { name: "Solo Projects", exact: true }).click();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    const popup = await selector.boundingBox();
+    expect(popup).not.toBeNull();
+    expect(popup!.x).toBeGreaterThanOrEqual(0);
+    expect(popup!.x + popup!.width).toBeLessThanOrEqual(375);
+    await selector.getByRole("menuitem", { name: "Solo Projects", exact: true }).click();
     await expect(page).toHaveURL(`${origin}/w/${first}`);
+    await page.setViewportSize({ width: 1280, height: 720 });
     const firstId = (await pool.query('SELECT id FROM organization WHERE slug = $1', [first])).rows[0].id;
     await expect.poll(async () => decodeURIComponent(
       (await context.cookies()).find((cookie) => cookie.name === "vv-workspace")?.value ?? "",
@@ -71,7 +81,7 @@ test("workspace creation, persistent selector, default navigation, and independe
     await otherTab.close();
 
     selector = await openSelector(page);
-    await selector.getByRole("link", { name: "All workspaces", exact: true }).click();
+    await selector.getByRole("menuitem", { name: "All workspaces", exact: true }).click();
     await expect(page.getByRole("heading", { name: "All workspaces", exact: true })).toBeVisible();
     await expect(page.getByRole("main").getByRole("link", { name: /Solo Projects/ })).toBeVisible();
     await expect(page.getByRole("main").getByRole("link", { name: /Team Projects/ })).toBeVisible();
@@ -118,7 +128,7 @@ test("nonmembers and revoked memberships cannot access workspace data", async ({
     await page.goto("/dashboard");
     await expect(page).toHaveURL(`${origin}/dashboard`);
     await expect(page.getByRole("heading", { name: /Welcome/ })).toBeVisible();
-    await expect(page.locator("header").getByText("Private Workspace", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("banner").getByText("Private Workspace", { exact: true })).toHaveCount(0);
   } finally {
     await outsiderContext.close();
     await pool.query('DELETE FROM organization WHERE slug = $1', [slug]);

@@ -9,7 +9,9 @@ type AuthenticatedLayoutProps = {
   children: ReactNode;
 };
 
-export default async function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
+export default async function AuthenticatedLayout({
+  children,
+}: AuthenticatedLayoutProps) {
   await requireSession();
   const workspaces = await listWorkspaces();
   return (
