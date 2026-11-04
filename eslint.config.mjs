@@ -6,7 +6,7 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   {
-    files: ["src/app/**/*.tsx", "src/features/**/*.tsx"],
+    files: ["src/app/**/*.{jsx,tsx}", "src/features/**/*.{jsx,tsx}"],
     ignores: ["src/app/layout.tsx"],
     rules: {
       "no-restricted-syntax": [

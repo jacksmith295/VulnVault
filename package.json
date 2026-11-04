@@ -13,7 +13,11 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "test:e2e": "playwright test",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "hooks:install": "node scripts/install-hooks.mjs",
+    "prepare": "node scripts/install-hooks.mjs --prepare",
+    "test:hooks": "node --test tests/hooks/*.node.mjs",
+    "hooks:check": "node scripts/check-staged-ui.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
