@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { SessionMonitor } from "@/features/auth/components/SessionMonitor";
 import { requireSession } from "@/lib/auth-session";
 
 type AuthenticatedLayoutProps = {
@@ -8,5 +9,10 @@ type AuthenticatedLayoutProps = {
 
 export default async function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
   await requireSession();
-  return children;
+  return (
+    <>
+      <SessionMonitor />
+      {children}
+    </>
+  );
 }

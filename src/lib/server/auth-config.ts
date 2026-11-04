@@ -3,7 +3,7 @@ import { APIError, createAuthMiddleware } from "better-auth/api";
 import { organization } from "better-auth/plugins";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { z } from "zod";
-import { db } from "@/db";
+import { db } from "@/lib/server/database";
 import * as schema from "@/db/schema";
 import { sendAuthEmail } from "@/lib/server/email";
 import { readServerEnv } from "@/lib/server/env";
@@ -48,6 +48,8 @@ export const auth = betterAuth({
   session: {
     expiresIn: 60 * 60 * 24 * 7,
     updateAge: 60 * 60 * 24,
+    // Server Components read sessions; the browser refreshes them and receives the new cookie.
+    deferSessionRefresh: true,
     cookieCache: { enabled: false },
   },
   rateLimit: {

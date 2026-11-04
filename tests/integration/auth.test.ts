@@ -1,4 +1,7 @@
 import { randomUUID } from "node:crypto";
+import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { and, eq, inArray, like } from "drizzle-orm";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
@@ -13,10 +16,16 @@ vi.mock("@/lib/server/email", () => ({
 
 import { auth } from "@/lib/auth";
 import { db, pool } from "@/db";
-import { account, member, organization, session, user, verification } from "@/db/schema";
+import { account, legacyUsers, member, organization, session, user, verification } from "@/db/schema";
 
 const runId = randomUUID();
 const password = "correct-horse-battery-staple";
+const legacyFixture = {
+  id: randomUUID(),
+  fullName: "Existing VulnVault Developer",
+  email: `legacy-${runId}@example.com`,
+  passwordHash: "pre-authentication-fixture-hash",
+};
 let addressCounter = 0;
 const addressPrefix = `${Math.floor(Math.random() * 200) + 1}.${Math.floor(Math.random() * 200) + 1}`;
 
@@ -63,10 +72,30 @@ async function login(email: string, suppliedPassword = password) {
 }
 
 beforeAll(async () => {
-  await migrate(db, { migrationsFolder: "./drizzle" });
+  const baselineFolder = await mkdtemp(join(tmpdir(), "vulnvault-baseline-migration-"));
+  try {
+    const journal = JSON.parse(await readFile("./drizzle/meta/_journal.json", "utf8"));
+    const baseline = journal.entries[0];
+    expect(baseline.tag).toBe("0000_early_bucky");
+    await mkdir(join(baselineFolder, "meta"));
+    await writeFile(join(baselineFolder, "meta", "_journal.json"), JSON.stringify({
+      ...journal,
+      entries: [baseline],
+    }));
+    await copyFile(`./drizzle/${baseline.tag}.sql`, join(baselineFolder, `${baseline.tag}.sql`));
+
+    // On a fresh test database, insert old-format data before the auth upgrade runs.
+    // On subsequent runs both migrator calls are no-ops, preserving repeatability.
+    await migrate(db, { migrationsFolder: baselineFolder });
+    await db.insert(legacyUsers).values(legacyFixture);
+    await migrate(db, { migrationsFolder: "./drizzle" });
+  } finally {
+    await rm(baselineFolder, { recursive: true, force: true });
+  }
 });
 
 afterAll(async () => {
+  await db.delete(legacyUsers).where(eq(legacyUsers.id, legacyFixture.id));
   const users = await db.select({ id: user.id }).from(user).where(like(user.email, `%${runId}@example.com`));
   if (users.length) {
     await db.delete(verification).where(inArray(verification.value, users.map((item) => item.id)));
@@ -76,6 +105,10 @@ afterAll(async () => {
 });
 
 describe("real authentication and persistence", () => {
+  it("preserves published pre-authentication users when applying the auth migrations", async () => {
+    expect(await db.select().from(legacyUsers).where(eq(legacyUsers.id, legacyFixture.id))).toEqual([legacyFixture]);
+  });
+
   it("requires verification and creates neither a session nor a workspace on registration", async () => {
     const person = await register("unverified", false);
     expect((await login(person.email)).response.status).toBe(403);
@@ -162,11 +195,17 @@ describe("real authentication and persistence", () => {
     await db.update(session).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(session.userId, person.id));
     expect(await (await request("/get-session", undefined, expired.cookie)).json()).toBeNull();
     const current = await login(person.email);
+    const currentSession = await (await request("/get-session", undefined, current.cookie)).json();
     const originalExpiry = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
-    await db.update(session).set({ expiresAt: originalExpiry, updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) }).where(eq(session.userId, person.id));
+    await db.update(session).set({ expiresAt: originalExpiry, updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) }).where(eq(session.id, currentSession.session.id));
     const refreshed = await (await request("/get-session", undefined, current.cookie)).json();
     expect(refreshed.user.id).toBe(person.id);
-    expect((await db.select().from(session).where(eq(session.userId, person.id)))[0].expiresAt.getTime()).toBeGreaterThan(originalExpiry.getTime());
+    expect(refreshed.needsRefresh).toBe(true);
+    expect((await db.select().from(session).where(eq(session.id, currentSession.session.id)))[0].expiresAt.getTime()).toBe(originalExpiry.getTime());
+    const renewal = await request("/get-session", {}, current.cookie);
+    expect(renewal.status).toBe(200);
+    expect(renewal.headers.get("set-cookie")).toContain("session_token");
+    expect((await db.select().from(session).where(eq(session.id, currentSession.session.id)))[0].expiresAt.getTime()).toBeGreaterThan(originalExpiry.getTime());
   });
 
   it("blocks workspace API operations until onboarding permissions are implemented", async () => {

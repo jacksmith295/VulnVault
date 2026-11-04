@@ -48,7 +48,7 @@ Development is local for now. Use the existing Next.js application and local Pos
 - Use isolated test data and a separate test database when persistence tests require one. Never run destructive tests against development data.
 - Report exactly which checks passed, failed, or could not run. Do not claim verification that was not performed.
 
-Current frontend commands, run from `frontend/`:
+Current frontend commands, run from the repository root:
 
 ```sh
 npm run dev

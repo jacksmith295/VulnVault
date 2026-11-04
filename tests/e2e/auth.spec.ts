@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { Pool } from "pg";
 
 const inbox = "http://127.0.0.1:8025";
 
@@ -88,6 +89,28 @@ test("account verification, sessions, recovery, and reset replay work end to end
 
     await login(page, email, newPassword);
     await expect(page).toHaveURL(/\/dashboard$/u);
+
+    // Age the real session and browser cookie to catch refreshes lost during server rendering.
+    const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+    const oldExpiry = Date.now() + 2 * 24 * 60 * 60 * 1000;
+    try {
+      await pool.query(
+        'UPDATE session SET expires_at = $1, updated_at = $2 WHERE user_id IN (SELECT id FROM "user" WHERE email = $3)',
+        [new Date(oldExpiry), new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), email],
+      );
+    } finally {
+      await pool.end();
+    }
+    const cookie = (await page.context().cookies()).find((entry) => entry.name.endsWith("session_token"));
+    if (!cookie) throw new Error("Expected a real browser session cookie after login.");
+    await page.context().addCookies([{ ...cookie, expires: oldExpiry / 1000 }]);
+    const renewal = page.waitForResponse((response) =>
+      response.url().includes("/api/auth/get-session") && response.request().method() === "POST");
+    await page.reload();
+    expect((await renewal).ok()).toBeTruthy();
+    await expect.poll(async () =>
+      (await page.context().cookies()).find((entry) => entry.name.endsWith("session_token"))?.expires ?? 0,
+    ).toBeGreaterThan((Date.now() + 6 * 24 * 60 * 60 * 1000) / 1000);
   } finally {
     await otherContext.close();
   }

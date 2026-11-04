@@ -2,6 +2,7 @@
 import { relations } from "drizzle-orm";
 import {
   pgTable,
+  uuid,
   text,
   bigint,
   timestamp,
@@ -189,3 +190,11 @@ export const invitationRelations = relations(invitation, ({ one }) => ({
     references: [user.id],
   }),
 }));
+
+// Preserve the pre-authentication scaffold table and its rows. New logins use Better Auth.
+export const legacyUsers = pgTable("users", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  fullName: text("full_name").notNull(),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+});

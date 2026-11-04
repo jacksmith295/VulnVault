@@ -59,6 +59,7 @@ Email verification and session behaviour are agreed. Other lifetimes below are i
 - Require email verification before normal sign-in, workspace creation, or invitation acceptance. Keep the local flow realistic by verifying through Mailpit rather than adding a bypass.
 - Use library-managed password hashing and opaque database sessions. Do not store bearer credentials in browser local storage.
 - Start with a seven-day session lifetime refreshed after one day of activity. Avoid cookie session caching initially so revocation does not depend on a stale cached session.
+- Server Components read sessions without renewing them. The authenticated browser checks sessions on mount, focus, and every 60 seconds while online; when due, the library posts a refresh to renew both the database expiry and browser cookie. An open tab can keep a session alive, so this is not a strict human-inactivity timeout.
 - Password reset links expire after one hour, are single-use, and revoke existing sessions when reset succeeds. Reset completion returns the user to login.
 - Verification links expire after 24 hours; invitations after seven days. Confirm each lifetime is configurable in the chosen version before promising it.
 - Use generic login/reset responses where appropriate, and bounded auth/email request rates. Test that throttling is active in the local environment rather than relying on production-only defaults.

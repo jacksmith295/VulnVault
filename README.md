@@ -6,11 +6,10 @@ See [working agreements](AGENTS.md), [the MVP plan](docs/mvp-plan.md), and [the 
 
 ## Local setup
 
-Requirements: Node.js 24 LTS, npm, Docker Engine, and Docker Compose. Run infrastructure commands from the repository root and application commands from `frontend/`.
+Requirements: Node.js 24 LTS, npm, Docker Engine, and Docker Compose. Run all commands from the repository root.
 
 ```sh
 docker compose up -d --wait
-cd frontend
 npm ci
 cp .env.example .env.local
 openssl rand -hex 32
@@ -27,7 +26,7 @@ Open [VulnVault](http://localhost:3000) and the [development inbox](http://local
 
 Registration creates an account without creating a workspace. The protected dashboard is an account landing page until workspace onboarding is implemented. The database includes the workspace membership foundation, but workspace operations are disabled during this slice.
 
-Compose exposes PostgreSQL at `127.0.0.1:55432`, SMTP at `127.0.0.1:1025`, and the inbox at `127.0.0.1:8025`. Its credentials are development-only. PostgreSQL data persists in the `vulnvault_postgres-data` volume. Stop infrastructure with `docker compose stop`; do not remove its volume unless you intend to erase development data.
+Compose exposes PostgreSQL at `localhost:5432`, SMTP at `127.0.0.1:1025`, and the inbox at `127.0.0.1:8025`. Its credentials are development-only. PostgreSQL data persists in the `vulnvault_postgres_data` volume. Stop infrastructure with `docker compose stop`; do not remove its volume unless you intend to erase development data.
 
 ## Verification
 
@@ -37,7 +36,7 @@ Start the separate, disposable test database from the repository root:
 docker compose --profile test up -d --wait
 ```
 
-Then, from `frontend/`:
+Then, from the repository root:
 
 ```sh
 npm run lint
@@ -62,6 +61,8 @@ npm run db:migrate
 ```
 
 Review generated SQL before applying it. Changes that could discard data need an explicit migration plan. Schema generation and applying migrations are separate operations; starting the app does not silently rewrite the database.
+
+The original `0000` migration and scaffold `users` table are preserved. The additive `0001` migration creates Better Auth's tables. Existing scaffold rows remain intact but do not automatically become login accounts; their password format and verification state have not been established. Register through the application for the new authentication flow.
 
 ## Delivery
 
