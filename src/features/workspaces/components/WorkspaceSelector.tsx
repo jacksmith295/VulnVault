@@ -12,6 +12,29 @@ export function WorkspaceSelector({ workspaces }: { workspaces: Workspace[] }) {
   const slug = current?.slug;
   const dropdown = useRef<HTMLDetailsElement>(null);
   useEffect(() => {
+    function dismissOutside(event: PointerEvent) {
+      const details = dropdown.current;
+      if (details?.open && event.target instanceof Node && !details.contains(event.target)) {
+        details.open = false;
+      }
+    }
+
+    function dismissOnEscape(event: KeyboardEvent) {
+      const details = dropdown.current;
+      if (event.key === "Escape" && details?.open) {
+        details.open = false;
+        details.querySelector("summary")?.focus();
+      }
+    }
+
+    document.addEventListener("pointerdown", dismissOutside, true);
+    document.addEventListener("keydown", dismissOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", dismissOutside, true);
+      document.removeEventListener("keydown", dismissOnEscape);
+    };
+  }, []);
+  useEffect(() => {
     if (dropdown.current) dropdown.current.open = false;
     if (slug) void rememberWorkspaceAction(slug).catch(() => { /* Navigation remains usable if saving the preference fails. */ });
   }, [pathname, slug]);

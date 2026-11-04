@@ -33,6 +33,18 @@ test("workspace creation, persistent selector, default navigation, and independe
     await expect(page.getByText("Your role: owner", { exact: true })).toBeVisible();
     await expect(page.locator("header")).toBeVisible();
     let selector = await openSelector(page);
+    await selector.getByRole("navigation").click({ position: { x: 4, y: 20 } });
+    await expect(selector).toHaveAttribute("open", "");
+    await page.getByRole("heading", { name: "Solo Projects", exact: true }).evaluate((heading) => {
+      heading.addEventListener("pointerdown", (event) => event.stopPropagation(), { once: true });
+    });
+    await page.getByRole("heading", { name: "Solo Projects", exact: true }).click();
+    await expect(selector).not.toHaveAttribute("open", "");
+    selector = await openSelector(page);
+    await page.keyboard.press("Escape");
+    await expect(selector).not.toHaveAttribute("open", "");
+    await expect(selector.locator("summary")).toBeFocused();
+    selector = await openSelector(page);
     await expect(selector.getByRole("link", { name: "All workspaces", exact: true })).toBeVisible();
     await selector.getByRole("link", { name: "Create workspace +", exact: true }).click();
     await expect(page).toHaveURL(`${origin}/workspaces/new`);
