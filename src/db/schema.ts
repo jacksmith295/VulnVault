@@ -1,6 +1,7 @@
 // Generated from Better Auth 1.7.16; membership uniqueness is an application constraint.
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
+  check,
   pgTable,
   uuid,
   text,
@@ -215,3 +216,61 @@ export const serviceRepository = pgTable("service_repository", {
   serviceId: text("service_id").notNull().references(() => service.id, { onDelete: "cascade" }),
   url: text("url").notNull(),
 }, (table) => [uniqueIndex("service_repository_service_url_unique").on(table.serviceId, table.url)]);
+
+export const finding = pgTable(
+  "finding",
+  {
+    id: text("id").primaryKey(),
+    serviceId: text("service_id")
+      .notNull()
+      .references(() => service.id, { onDelete: "restrict" }),
+    title: text("title").notNull(),
+    description: text("description").notNull(),
+    severity: text("severity").notNull(),
+    status: text("status").default("new").notNull(),
+    remediationNotes: text("remediation_notes"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    resolvedAt: timestamp("resolved_at"),
+    version: integer("version").default(1).notNull(),
+    createdBy: text("created_by").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    updatedBy: text("updated_by").references(() => user.id, {
+      onDelete: "set null",
+    }),
+  },
+  (table) => [
+    index("finding_service_created_id_idx").on(
+      table.serviceId,
+      table.createdAt,
+      table.id,
+    ),
+    check(
+      "finding_severity_check",
+      sql`${table.severity} IN ('critical', 'high', 'medium', 'low', 'informational')`,
+    ),
+    check(
+      "finding_status_check",
+      sql`${table.status} IN ('new', 'triaged', 'in_progress', 'resolved', 'rejected', 'accepted_risk')`,
+    ),
+    check("finding_version_check", sql`${table.version} >= 1`),
+  ],
+);
+
+export const findingReference = pgTable(
+  "finding_reference",
+  {
+    id: text("id").primaryKey(),
+    findingId: text("finding_id")
+      .notNull()
+      .references(() => finding.id, { onDelete: "cascade" }),
+    url: text("url").notNull(),
+  },
+  (table) => [
+    uniqueIndex("finding_reference_finding_url_unique").on(
+      table.findingId,
+      table.url,
+    ),
+  ],
+);

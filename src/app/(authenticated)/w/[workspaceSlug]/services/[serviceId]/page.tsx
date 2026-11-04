@@ -1,6 +1,7 @@
 import { Page, PageHeader } from "@/components/layout";
 import { TextLink } from "@/components/ui/link";
-import { requireService } from "@/features/services/data";
+import { listFindings } from "@/features/findings/data";
+import { FindingsList } from "@/features/findings/components/FindingsList";
 import { ServiceDetails } from "@/features/services/components/ServiceDetails";
 
 export default async function ServicePage({
@@ -9,7 +10,7 @@ export default async function ServicePage({
   params: Promise<{ workspaceSlug: string; serviceId: string }>;
 }) {
   const { workspaceSlug, serviceId } = await params;
-  const { workspace, service, repositories } = await requireService(
+  const { workspace, service, repositories, findings } = await listFindings(
     workspaceSlug,
     serviceId,
   );
@@ -32,6 +33,12 @@ export default async function ServicePage({
         service={service}
         repositories={repositories}
         manage={manage}
+      />
+      <FindingsList
+        slug={workspace.slug}
+        serviceId={service.id}
+        findings={findings}
+        archived={archived}
       />
     </Page>
   );
