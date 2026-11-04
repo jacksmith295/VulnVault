@@ -1,11 +1,12 @@
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
+
+import { requireSession } from "@/lib/auth-session";
 
 type AuthenticatedLayoutProps = {
   children: ReactNode;
 };
 
-export default function AuthenticatedLayout({
-  children,
-}: AuthenticatedLayoutProps) {
+export default async function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
+  await requireSession();
   return children;
 }
