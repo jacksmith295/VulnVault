@@ -47,6 +47,17 @@ Development is local for now. Use the existing Next.js application and local Pos
 - Discuss schema changes, migration strategy, and data ownership before implementation. Do not silently reset databases or discard data.
 - Preserve existing user changes. Do not revert unrelated edits or include them in commits without permission.
 
+## UI components and theme
+
+- Pages and feature components should return reusable TSX components rather than raw HTML such as `div`, `p`, native form controls, or independently styled links. Keep semantic HTML in shared UI and layout component definitions.
+- ESLint enforces component-based JSX and central styling in routes and features. The root document layout is exempt for its required HTML/body structure. Add a shared component or variant when the rule flags a new presentation need.
+- Build interactive controls on the installed Base UI primitives. Reuse styled wrappers from `components/ui` rather than adding feature-specific native controls or custom interaction listeners.
+- Keep Tailwind classes in shared component definitions. Expose typed variants for recurring differences; avoid cosmetic `className` overrides in pages and features.
+- Theme values belong in global semantic tokens. Maintain the green application identity consistently in light and dark modes, with a persisted system/light/dark preference.
+- Use shared page, typography, form, feedback, list, and empty-state components. Keep domain presentation in feature components and authorised data loading in server routes.
+- Preserve semantic landmarks, heading levels, labels, accessible errors, valid links/buttons, and keyboard interaction through composition.
+- Theme and presentation changes must preserve form state, validation, action payloads, and original service edit versions. Keep theme-independent component identity stable.
+
 ## Verification
 
 - Run linting and TypeScript checks for relevant application changes, plus a production build when appropriate.

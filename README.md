@@ -66,6 +66,12 @@ Review generated SQL before applying it. Changes that could discard data need an
 
 The original `0000` migration and scaffold `users` table are preserved. The additive `0001` migration creates Better Auth's tables, and `0002` adds services and their repository associations. Existing scaffold rows remain intact but do not automatically become login accounts; their password format and verification state have not been established. Register through the application for the new authentication flow.
 
+## UI and themes
+
+Shared styled Base UI controls live in `src/components/ui`, and reusable page/form/layout structures live in `src/components/layout`. Pages and features compose these TSX components; ESLint prevents native HTML and cosmetic `className` overrides there. Semantic HTML and Tailwind defaults belong in the shared definitions, with typed variants for recurring differences.
+
+The green theme supports Light, Dark, and System from the theme menu on both public and authenticated screens. Preferences persist in the browser. Theme colours and typography are centralised in `src/app/globals.css`; changing theme preserves unsaved form state.
+
 ## Delivery
 
 Work on feature branches, with implementation and independent review agents. PRs include behaviour changes and validation evidence and remain for the user's approval before merging. Public deployment is outside the current scope.

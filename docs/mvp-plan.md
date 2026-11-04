@@ -20,7 +20,7 @@ The application is initially self-hosted locally. Public hosting, cloud infrastr
 
 ## Current repository
 
-Authentication and workspace onboarding are merged, including local infrastructure, shared app header, workspace selector, integration tests, and browser tests. Service management is implemented on its feature branch and awaiting PR review.
+Authentication and workspace onboarding are merged, including local infrastructure, shared app header, workspace selector, integration tests, and browser tests. Service management is merged. The approved UI foundation refactor is implemented on its feature branch and awaiting PR review.
 
 At initialisation, the login form and login schema contained user changes. Preserve these when implementing subsequent work.
 
@@ -94,6 +94,6 @@ Public deployment, cloud scaling, separate ingestion infrastructure, enterprise 
 
 ## Next design discussion
 
-The [service management plan](service-management-plan.md) records the approved schema and implementation slice, now implemented on its feature branch. The user accepted name, optional description, repository URLs, owner/admin management, member viewing, and archiving. The additive migration, permissions, repository associations, and archive/restore lifecycle are ready for PR review. Services precede invitations for the initial solo workflow; invitation and membership management remain planned separately.
+The [service management plan](service-management-plan.md) records the merged service slice. The [UI foundation plan](ui-foundation-plan.md) now takes priority before further feature delivery. The user accepted name, optional description, repository URLs, owner/admin management, member viewing, and archiving. The service migration, permissions, repository associations, and archive/restore lifecycle are merged. Services precede invitations for the initial solo workflow; invitation and membership management remain planned separately.
 
 Use a separate implementation agent and review agent. Review the proposed design as well as the resulting code. Feature branches and pushes are authorised; PRs remain for the user's review and approval before merging.

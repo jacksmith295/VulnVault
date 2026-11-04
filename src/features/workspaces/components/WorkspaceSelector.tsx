@@ -1,51 +1,54 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect } from "react";
+import {
+  Menu,
+  MenuTrigger,
+  MenuPopup,
+  MenuLink,
+  MenuSeparator,
+} from "@/components/ui/menu";
 import type { Workspace } from "../data";
 import { rememberWorkspaceAction } from "../actions";
 
 export function WorkspaceSelector({ workspaces }: { workspaces: Workspace[] }) {
   const pathname = usePathname();
-  const current = workspaces.find((workspace) => pathname === `/w/${workspace.slug}` || pathname.startsWith(`/w/${workspace.slug}/`));
+  const searchParams = useSearchParams();
+  const route = `${pathname}?${searchParams.toString()}`;
+  const current = workspaces.find(
+    (workspace) =>
+      pathname === `/w/${workspace.slug}` ||
+      pathname.startsWith(`/w/${workspace.slug}/`),
+  );
   const slug = current?.slug;
-  const dropdown = useRef<HTMLDetailsElement>(null);
-  useEffect(() => {
-    function dismissOutside(event: PointerEvent) {
-      const details = dropdown.current;
-      if (details?.open && event.target instanceof Node && !details.contains(event.target)) {
-        details.open = false;
-      }
-    }
 
-    function dismissOnEscape(event: KeyboardEvent) {
-      const details = dropdown.current;
-      if (event.key === "Escape" && details?.open) {
-        details.open = false;
-        details.querySelector("summary")?.focus();
-      }
-    }
-
-    document.addEventListener("pointerdown", dismissOutside, true);
-    document.addEventListener("keydown", dismissOnEscape);
-    return () => {
-      document.removeEventListener("pointerdown", dismissOutside, true);
-      document.removeEventListener("keydown", dismissOnEscape);
-    };
-  }, []);
   useEffect(() => {
-    if (dropdown.current) dropdown.current.open = false;
-    if (slug) void rememberWorkspaceAction(slug).catch(() => { /* Navigation remains usable if saving the preference fails. */ });
+    if (slug)
+      void rememberWorkspaceAction(slug).catch(() => {
+        /* Navigation remains usable if saving the preference fails. */
+      });
   }, [pathname, slug]);
-  return <details ref={dropdown} className="relative">
-    <summary className="cursor-pointer rounded-lg border px-4 py-2 font-medium">{current?.name ?? "Workspaces"}</summary>
-    <nav aria-label="Workspace navigation" className="absolute left-0 mt-2 w-72 rounded-lg border bg-background p-2 shadow-lg">
-      {workspaces.map((workspace) => <Link key={workspace.id} href={`/w/${workspace.slug}`} aria-current={current?.id === workspace.id ? "page" : undefined} className="block rounded px-3 py-2 hover:bg-muted">{workspace.name}{current?.id === workspace.id ? " (current)" : ""}</Link>)}
-      <div className="mt-2 border-t pt-2">
-        <Link className="block rounded px-3 py-2 hover:bg-muted" href="/workspaces/new">Create workspace +</Link>
-        <Link className="block rounded px-3 py-2 hover:bg-muted" href="/workspaces">All workspaces</Link>
-      </div>
-    </nav>
-  </details>;
+
+  return (
+    <Menu key={route}>
+      <MenuTrigger aria-label="Switch workspace">
+        {current?.name ?? "Workspaces"}
+      </MenuTrigger>
+      <MenuPopup>
+        {workspaces.map((workspace) => (
+          <MenuLink
+            key={workspace.id}
+            href={`/w/${workspace.slug}`}
+            current={current?.id === workspace.id}
+          >
+            {workspace.name}
+          </MenuLink>
+        ))}
+        <MenuSeparator />
+        <MenuLink href="/workspaces/new">Create workspace +</MenuLink>
+        <MenuLink href="/workspaces">All workspaces</MenuLink>
+      </MenuPopup>
+    </Menu>
+  );
 }
