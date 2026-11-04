@@ -25,6 +25,14 @@ Development is local for now. Use the existing Next.js application and local Pos
 - Address review findings, verify fixes, and request another review when substantive changes warrant it. Report unresolved concerns explicitly.
 - Agent review supports the user's PR review; it does not authorise merging to main.
 
+## Model selection and reasoning effort
+
+- Choose a suitable model and explicitly select low or medium reasoning effort wherever the available tooling allows it, including for implementation and review agents. Do not inherit an unknown or higher effort setting silently.
+- Prefer low reasoning for routine, clearly bounded work such as straightforward documentation edits, simple searches, and mechanical changes. Use medium for implementation, debugging, design analysis, and substantive review when the task warrants it.
+- Any reasoning effort above medium requires the user's explicit approval before use. Explain the task, proposed model and effort, and why escalation would help. Approval applies only to the stated scope; task complexity or a review failure does not imply approval.
+- Model choice and reasoning effort are separate decisions. A model switch must not bypass the effort approval rule. Continue useful work at low or medium while an optional escalation is pending.
+- If the current session's model or reasoning effort cannot be changed through available tools, state that limitation rather than claiming to have changed it. Do not edit user-wide configuration to enforce repository preferences without permission.
+
 ## Code and architecture
 
 - Retain the existing Next.js App Router, TypeScript, Tailwind, and component conventions unless a different direction is agreed.
