@@ -2,6 +2,7 @@
 import { relations, sql } from "drizzle-orm";
 import {
   check,
+  foreignKey,
   pgTable,
   uuid,
   text,
@@ -111,7 +112,14 @@ export const member = pgTable(
   (table) => [
     index("member_organizationId_idx").on(table.organizationId),
     index("member_userId_idx").on(table.userId),
-    uniqueIndex("member_organization_user_unique").on(table.organizationId, table.userId),
+    uniqueIndex("member_organization_user_unique").on(
+      table.organizationId,
+      table.userId,
+    ),
+    uniqueIndex("member_workspace_id_unique").on(
+      table.organizationId,
+      table.id,
+    ),
   ],
 );
 
@@ -200,22 +208,45 @@ export const legacyUsers = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
 });
 
-export const service = pgTable("service", {
-  id: text("id").primaryKey(),
-  workspaceId: text("workspace_id").notNull().references(() => organization.id, { onDelete: "restrict" }),
-  name: text("name").notNull(),
-  description: text("description"),
-  archivedAt: timestamp("archived_at"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-  version: integer("version").default(1).notNull(),
-}, (table) => [index("service_workspace_archive_idx").on(table.workspaceId, table.archivedAt)]);
+export const service = pgTable(
+  "service",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "restrict" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    archivedAt: timestamp("archived_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    version: integer("version").default(1).notNull(),
+  },
+  (table) => [
+    index("service_workspace_archive_idx").on(
+      table.workspaceId,
+      table.archivedAt,
+    ),
+    uniqueIndex("service_workspace_id_unique").on(table.workspaceId, table.id),
+  ],
+);
 
-export const serviceRepository = pgTable("service_repository", {
-  id: text("id").primaryKey(),
-  serviceId: text("service_id").notNull().references(() => service.id, { onDelete: "cascade" }),
-  url: text("url").notNull(),
-}, (table) => [uniqueIndex("service_repository_service_url_unique").on(table.serviceId, table.url)]);
+export const serviceRepository = pgTable(
+  "service_repository",
+  {
+    id: text("id").primaryKey(),
+    serviceId: text("service_id")
+      .notNull()
+      .references(() => service.id, { onDelete: "cascade" }),
+    url: text("url").notNull(),
+  },
+  (table) => [
+    uniqueIndex("service_repository_service_url_unique").on(
+      table.serviceId,
+      table.url,
+    ),
+  ],
+);
 
 export const finding = pgTable(
   "finding",
@@ -272,5 +303,91 @@ export const findingReference = pgTable(
       table.findingId,
       table.url,
     ),
+  ],
+);
+
+export const workspaceGroup = pgTable(
+  "workspace_group",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    isDefault: boolean("is_default").default(false).notNull(),
+    version: integer("version").default(1).notNull(),
+  },
+  (t) => [
+    uniqueIndex("group_workspace_id_default_unique").on(
+      t.workspaceId,
+      t.id,
+      t.isDefault,
+    ),
+    uniqueIndex("group_workspace_name_unique").on(
+      t.workspaceId,
+      sql`lower(${t.name})`,
+    ),
+    uniqueIndex("group_workspace_default_unique")
+      .on(t.workspaceId)
+      .where(sql`${t.isDefault}`),
+    check(
+      "group_default_name_check",
+      sql`NOT ${t.isDefault} OR ${t.name} = 'Everyone'`,
+    ),
+    check("group_version_check", sql`${t.version} >= 1`),
+    check("group_name_check", sql`length(trim(${t.name})) BETWEEN 2 AND 100`),
+  ],
+);
+
+// The false discriminator lets the composite foreign key reject default-group associations.
+export const groupMembership = pgTable(
+  "group_membership",
+  {
+    workspaceId: text("workspace_id").notNull(),
+    groupId: text("group_id").notNull(),
+    memberId: text("member_id").notNull(),
+    isDefault: boolean("is_default").default(false).notNull(),
+  },
+  (t) => [
+    uniqueIndex("group_membership_unique").on(t.groupId, t.memberId),
+    foreignKey({
+      columns: [t.workspaceId, t.groupId, t.isDefault],
+      foreignColumns: [
+        workspaceGroup.workspaceId,
+        workspaceGroup.id,
+        workspaceGroup.isDefault,
+      ],
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [t.workspaceId, t.memberId],
+      foreignColumns: [member.organizationId, member.id],
+    }).onDelete("cascade"),
+    check("group_membership_custom_check", sql`NOT ${t.isDefault}`),
+  ],
+);
+
+export const serviceAccessGroup = pgTable(
+  "service_access_group",
+  {
+    workspaceId: text("workspace_id").notNull(),
+    serviceId: text("service_id").notNull(),
+    groupId: text("group_id").notNull(),
+    isDefault: boolean("is_default").default(false).notNull(),
+  },
+  (t) => [
+    uniqueIndex("service_access_group_unique").on(t.serviceId, t.groupId),
+    foreignKey({
+      columns: [t.workspaceId, t.groupId, t.isDefault],
+      foreignColumns: [
+        workspaceGroup.workspaceId,
+        workspaceGroup.id,
+        workspaceGroup.isDefault,
+      ],
+    }).onDelete("restrict"),
+    foreignKey({
+      columns: [t.workspaceId, t.serviceId],
+      foreignColumns: [service.workspaceId, service.id],
+    }).onDelete("cascade"),
+    check("service_access_custom_check", sql`NOT ${t.isDefault}`),
   ],
 );

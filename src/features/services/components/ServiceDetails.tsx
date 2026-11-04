@@ -39,6 +39,9 @@ export function ServiceDetails({
       </Text>
       {manage && (
         <Stack>
+          <TextLink href={`/w/${slug}/services/${service.id}/access`}>
+            Manage access
+          </TextLink>
           {!archived && (
             <TextLink href={`/w/${slug}/services/${service.id}/edit`}>
               Edit service

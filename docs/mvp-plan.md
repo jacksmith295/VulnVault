@@ -13,14 +13,14 @@ The application is initially self-hosted locally. Public hosting, cloud infrastr
 - Begin with email/password accounts, login, logout, protected access, and password reset. Repository provider login is optional future work.
 - Anyone who can reach the application can register. Account registration and workspace access are separate concerns.
 - Use workspaces from the start, for both solo developers and teams. A user can create a workspace and become its owner, or join an existing workspace by invitation. Registration alone creates neither a workspace nor membership.
-- Users may belong to multiple workspaces. Services, findings, and integrations belong to a workspace. A solo developer uses a workspace with one member; there are no separate personal and company account types. Detailed roles and invitation mechanics still need agreement.
+- Users may belong to multiple workspaces. Services, findings, and integrations belong to a workspace. A solo developer uses a workspace with one member; there are no separate personal and company account types. Owners/admins manage services and groups; members access services through groups. Detailed invitation mechanics still need agreement.
 - A service may link multiple repositories; whether any are required remains to be decided. Keep repository provider identity separate from user authentication.
 - Eventually support manually entered and automatically imported findings, a board, assignment, remediation, and rejected findings.
 - Initial external sources of interest are Dependabot and public CVE feeds. GitLab, Bitbucket, and other sources must remain possible later.
 
 ## Current repository
 
-Authentication and workspace onboarding are merged, including local infrastructure, shared app header, workspace selector, integration tests, and browser tests. Service management is merged. The UI foundation and staged UI pre-commit hook are merged. Manual findings are implemented on their feature branch for review.
+Authentication and workspace onboarding are merged, including local infrastructure, shared app header, workspace selector, integration tests, and browser tests. Service management is merged. The UI foundation and staged UI pre-commit hook are merged. Manual findings are merged. Service access groups are implemented on their feature branch for review before the workspace findings board.
 
 At initialisation, the login form and login schema contained user changes. Preserve these when implementing subsequent work.
 
@@ -94,6 +94,6 @@ Public deployment, cloud scaling, separate ingestion infrastructure, enterprise 
 
 ## Next design discussion
 
-Services, the [UI foundation](ui-foundation-plan.md), and the staged UI pre-commit hook are merged. The [manual findings plan](manual-findings-plan.md) is approved and implemented for PR review. Board/assignment and invitation/membership management remain separate slices.
+Services, the [UI foundation](ui-foundation-plan.md), and the staged UI pre-commit hook are merged. Manual findings are merged. The [service access groups plan](service-access-groups-plan.md) is implemented for PR review. The workspace findings board follows these permissions, with filters and status menus before drag-and-drop. Assignment and invitation/membership management remain separate slices.
 
 Use a separate implementation agent and review agent. Review the proposed design as well as the resulting code. Feature branches and pushes are authorised; PRs remain for the user's review and approval before merging.
