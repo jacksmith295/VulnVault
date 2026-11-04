@@ -20,7 +20,7 @@ The application is initially self-hosted locally. Public hosting, cloud infrastr
 
 ## Current repository
 
-The repository started with a Next.js App Router frontend, TypeScript, Tailwind, shadcn components, and login/register forms with Zod schemas. The first implementation slice adds persisted authentication, local infrastructure, the workspace schema foundation, integration tests, and browser tests. Workspace onboarding remains the next slice.
+The repository started with a Next.js App Router frontend, TypeScript, Tailwind, shadcn components, and login/register forms with Zod schemas. The first implementation slice adds persisted authentication, local infrastructure, the workspace schema foundation, integration tests, and browser tests. Workspace onboarding is implemented on its feature branch and awaiting PR review.
 
 At initialisation, the login form and login schema contained user changes. Preserve these when implementing subsequent work.
 
@@ -48,7 +48,7 @@ Selected for this slice: Better Auth, its organisation plugin, Drizzle, PostgreS
 
 ### 2. Workspace context and first service
 
-Implement workspace creation and selection before service creation, unless already delivered with authentication. A registered user can create a workspace and become its owner. Agree on who can manage services and how invitations are issued and accepted. Invitation and member-management UI can be a separate slice if not needed for the single-user workflow; joining existing workspaces by invitation remains the agreed direction.
+Implement workspace creation and selection before service creation. Use a persistent header with a top-left workspace dropdown, including Create workspace + and All workspaces links. Default to an accessible remembered workspace after login; explicit URLs retain independent context in each tab. See the [workspace onboarding plan](workspace-onboarding-plan.md). A registered user can create a workspace and become its owner. Agree on who can manage services and how invitations are issued and accepted. Invitation and member-management UI can be a separate slice if not needed for the single-user workflow; joining existing workspaces by invitation remains the agreed direction.
 
 Acceptance targets:
 
