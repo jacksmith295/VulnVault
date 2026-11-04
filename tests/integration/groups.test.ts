@@ -1,6 +1,8 @@
+import { authThrottlePool } from "@/lib/server/database";
+import { resetAuthRateLimits } from "../helpers/auth-rate-limits";
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { eq, inArray } from "drizzle-orm";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 const request = vi.hoisted(() => ({ headers: new Headers() }));
@@ -101,6 +103,7 @@ async function newService() {
 }
 beforeAll(async () => {
   await migrate(db, { migrationsFolder: "./drizzle" });
+  await resetAuthRateLimits();
   const email = `groups-${run}@example.com`,
     password = "Group-password-123!";
   const headers = {
@@ -204,6 +207,7 @@ afterAll(async () => {
   }
   if (userId) await db.delete(user).where(eq(user.id, userId));
   if (adminUserId) await db.delete(user).where(eq(user.id, adminUserId));
+  await authThrottlePool.end();
   await pool.end();
 });
 describe("workspace access groups with real PostgreSQL and sessions", () => {
@@ -720,3 +724,6 @@ describe("workspace access groups with real PostgreSQL and sessions", () => {
     }
   });
 });
+
+// Authentication uses one local bucket, so each test starts with a fresh budget.
+beforeEach(resetAuthRateLimits);

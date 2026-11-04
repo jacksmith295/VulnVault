@@ -1,6 +1,6 @@
 # Authentication and workspace foundation
 
-Status: the user agreed the workspace model, owner/admin/member responsibilities, required email verification, and seven-day sessions refreshed with activity and revoked after password reset. PR 1 is merged. PR 2 workspace onboarding is in progress. The agreed workspace onboarding details are recorded in [the PR 2 plan](workspace-onboarding-plan.md). Invitations remain a later slice.
+Status: authentication and workspace onboarding are merged in PRs 1 and 2. Services, UI foundations, findings, and service access groups are merged in PRs 3 through 7. This document records the original foundation and delivery plan; later permissions and locking follow the [service access groups plan](service-access-groups-plan.md). Invitations remain a later slice.
 
 ## Outcome
 

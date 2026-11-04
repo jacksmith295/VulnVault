@@ -1,5 +1,6 @@
+import { test } from "./fixtures";
 import { randomUUID } from "node:crypto";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 import { Pool } from "pg";
 import { verifiedAccount, login } from "./helpers";
 

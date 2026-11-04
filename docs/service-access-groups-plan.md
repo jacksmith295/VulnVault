@@ -1,6 +1,6 @@
 # Service access groups
 
-Status: implemented for PR review. This slice establishes access control before the workspace findings board.
+Status: merged in PR 7. This slice establishes access control before the workspace findings board.
 
 ## Agreed behaviour
 

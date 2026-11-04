@@ -1,5 +1,6 @@
+import { test } from "./fixtures";
 import { randomUUID } from "node:crypto";
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 import { Pool } from "pg";
 
 import { clientHeaders, emailLink, login } from "./helpers";

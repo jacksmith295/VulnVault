@@ -1,6 +1,6 @@
 # UI foundation and theming
 
-Status: implemented on its feature branch, awaiting PR review and merge. Includes next-themes and the approved shared component architecture. Pause feature delivery until this presentation refactor is complete.
+Status: merged in PR 4. Includes next-themes and the approved shared component architecture. The staged UI hook followed in PR 5.
 
 ## Agreed direction
 

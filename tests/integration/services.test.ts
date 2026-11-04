@@ -1,6 +1,8 @@
+import { authThrottlePool } from "@/lib/server/database";
+import { resetAuthRateLimits } from "../helpers/auth-rate-limits";
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { and, eq, inArray } from "drizzle-orm";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 
@@ -34,6 +36,7 @@ async function create() {
 
 beforeAll(async () => {
   await migrate(db, { migrationsFolder: "./drizzle" });
+  await resetAuthRateLimits();
   const email = `service-${run}@example.com`;
   const password = "Service-password-123!";
   const headers = { origin: "http://localhost:3000", "content-type": "application/json", "x-forwarded-for": `198.18.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 254) + 1}` };
@@ -53,6 +56,7 @@ afterAll(async () => {
   await db.delete(service).where(inArray(service.workspaceId, [workspaceId, otherId]));
   await db.delete(organization).where(inArray(organization.id, [workspaceId, otherId]));
   if (userId) await db.delete(user).where(eq(user.id, userId));
+  await authThrottlePool.end();
   await pool.end();
 });
 
@@ -221,3 +225,6 @@ describe("service management with real PostgreSQL and sessions", () => {
     }
   });
 });
+
+// Authentication uses one local bucket, so each test starts with a fresh budget.
+beforeEach(resetAuthRateLimits);

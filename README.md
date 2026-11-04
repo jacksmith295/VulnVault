@@ -32,6 +32,8 @@ Each workspace has a protected Everyone group that automatically includes all wo
 
 Owners/admins can open Groups from the workspace page to create custom groups and select existing workspace members. Manage access on a service switches between default and selected groups. Returning a restricted service to Everyone requires confirmation. Empty custom groups are allowed: if all groups assigned to a service are empty, only owners/admins can access it. Groups cannot be deleted in this slice. Removing and rejoining a workspace does not restore old custom-group memberships.
 
+Authentication ignores caller-supplied forwarded IP headers and shares rate-limit budgets across local users. Credential operations use a per-user PostgreSQL transaction guard so password recovery cannot be overtaken by an earlier login or password change. See [authentication hardening](docs/auth-hardening.md) for the scope, tests, and dependency-upgrade requirements.
+
 Compose exposes PostgreSQL at `localhost:5432`, SMTP at `127.0.0.1:1025`, and the inbox at `127.0.0.1:8025`. Its credentials are development-only. PostgreSQL data persists in the `vulnvault_postgres_data` volume. Stop infrastructure with `docker compose stop`; do not remove its volume unless you intend to erase development data.
 
 ## Verification

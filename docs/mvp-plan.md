@@ -20,7 +20,7 @@ The application is initially self-hosted locally. Public hosting, cloud infrastr
 
 ## Current repository
 
-Authentication and workspace onboarding are merged, including local infrastructure, shared app header, workspace selector, integration tests, and browser tests. Service management is merged. The UI foundation and staged UI pre-commit hook are merged. Manual findings are merged. Service access groups are implemented on their feature branch for review before the workspace findings board.
+Authentication and workspace onboarding are merged, including local infrastructure, shared app header, workspace selector, integration tests, and browser tests. Service management is merged. The UI foundation and staged UI pre-commit hook are merged. Manual findings are merged. Service access groups are merged. The hardening slice is implemented for PR review before the workspace findings board.
 
 At initialisation, the login form and login schema contained user changes. Preserve these when implementing subsequent work.
 
@@ -94,6 +94,6 @@ Public deployment, cloud scaling, separate ingestion infrastructure, enterprise 
 
 ## Next design discussion
 
-Services, the [UI foundation](ui-foundation-plan.md), and the staged UI pre-commit hook are merged. Manual findings are merged. The [service access groups plan](service-access-groups-plan.md) is implemented for PR review. The workspace findings board follows these permissions, with filters and status menus before drag-and-drop. Assignment and invitation/membership management remain separate slices.
+Services, the [UI foundation](ui-foundation-plan.md), and the staged UI pre-commit hook are merged. Manual findings are merged. The [service access groups plan](service-access-groups-plan.md) is merged. The [project-review hardening slice](auth-hardening.md) is implemented for PR review. The workspace findings board follows these permissions, with filters and status menus before drag-and-drop. Assignment and invitation/membership management remain separate slices.
 
 Use a separate implementation agent and review agent. Review the proposed design as well as the resulting code. Feature branches and pushes are authorised; PRs remain for the user's review and approval before merging.

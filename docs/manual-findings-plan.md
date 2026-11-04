@@ -1,13 +1,13 @@
 # Manual findings
 
-Status: implemented for PR review. The approved scope includes the schema, statuses, transitions, archived-service read-only policy, and no deletion for any role.
+Status: merged in PR 6. The scope includes the schema, statuses, transitions, archived-service read-only policy, and no deletion for any role. PR 7 adds [group-based service access and the workspace-first permission lock](service-access-groups-plan.md).
 
 ## Ownership and experience
 
 - Every finding belongs to exactly one service. Its service cannot be changed after creation in this slice. The same underlying vulnerability may have separate findings in different services, with independent statuses, notes, and resolution dates. No global CVE deduplication is introduced.
 - Add a findings section to service details, with list, create, detail, and edit flows. Start with a simple list; the board and assignment are a later slice.
 - Routes: `/w/[workspaceSlug]/services/[serviceId]/findings/new`, `/findings/[findingId]`, and `/findings/[findingId]/edit`, all under the same service route prefix.
-- All known workspace roles can create and update findings. Service management remains owner/admin-only. No role may delete findings. Rejection and resolution retain the record.
+- All known workspace roles can create and update findings within services their groups grant access to; owners/admins retain access to all services. Service management remains owner/admin-only. No role may delete findings. Rejection and resolution retain the record.
 - Agreed archived-service policy: findings remain readable, but creating or updating them requires the service to be active. Members must ask an owner/admin to restore an archived service first.
 - Use shared UI/layout components throughout. Add a reusable styled Base UI Select for severity/status, with feature-level badge compositions using shared semantic variants. Do not introduce native HTML or cosmetic className overrides in routes/features.
 
@@ -37,9 +37,9 @@ Workspace ownership is derived through the service. Avoid duplicating workspace 
 
 ## Permissions and transactional behaviour
 
-- Every operation requires a verified session and fresh known-role membership. Unknown roles fail closed.
+- Every operation requires a verified session, fresh known-role membership, and current service access. Unknown roles fail closed.
 - Scope finding access by authorised workspace, route service ID, and finding ID together. A valid finding ID from another service or workspace must reveal no data and permit no mutation.
-- Mutations use consistent lock order: membership, service, then finding. Hold membership and service share locks while confirming permissions and active service state, so membership revocation and service archival serialize with writes.
+- Mutations acquire the workspace permission lock first, then membership, service, and finding locks. Finding writes hold a shared workspace lock; group/access changes hold it exclusively. Re-read membership and access after locking and hold the relevant locks through commit. This protocol supersedes the original membership-first order; see the [service access groups plan](service-access-groups-plan.md#authorisation-and-concurrency).
 - Create/edit the finding and its references atomically. Preserve IDs for unchanged references. Remove only explicitly omitted associations as part of the same successful edit transaction.
 - Every edit matches the submitted integer version and increments it. A stale update changes neither the record nor its references and returns a recoverable conflict message.
 - Preserve initial field values and their version token together across theme changes and refreshed server props. Keep the form keyed by workspace/service/finding identity, not by theme or current version.

@@ -1,6 +1,6 @@
 # Workspace onboarding
 
-Status: implemented for PR 2, including the user-requested persistent workspace selector and default workspace entry. Awaiting PR review and merge.
+Status: merged in PR 2. Includes the persistent workspace selector and default workspace entry. Default-group provisioning was added in PR 7; see the [service access groups plan](service-access-groups-plan.md).
 
 ## User experience
 

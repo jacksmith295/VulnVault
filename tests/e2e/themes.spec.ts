@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { test } from "./fixtures";
+import { expect } from "@playwright/test";
 import { chooseTheme } from "./helpers";
 
 test("themes follow system preference and persist explicit choices without hydration errors", async ({ page }) => {
