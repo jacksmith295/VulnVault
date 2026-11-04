@@ -1,27 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { expect, test, type BrowserContext, type Page } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { Pool } from "pg";
-import { emailLink, login } from "./helpers";
+import { verifiedAccount, login } from "./helpers";
 
 const origin = "http://127.0.0.1:3100";
-
-async function verifiedAccount(context: BrowserContext) {
-  const email = `workspace-${randomUUID()}@example.com`;
-  const password = "WorkspaceTestPassword-123!";
-  await context.setExtraHTTPHeaders({
-    "x-forwarded-for": `198.18.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250) + 1}`,
-    origin,
-  });
-  const response = await context.request.post(`${origin}/api/auth/sign-up/email`, {
-    data: { name: "Workspace Developer", email, password, callbackURL: "/login?verified=true" },
-  });
-  expect(response.ok()).toBeTruthy();
-  const { user } = await response.json();
-  await context.request.get(await emailLink(context.request, email, "verify"));
-  const login = await context.request.post(`${origin}/api/auth/sign-in/email`, { data: { email, password } });
-  expect(login.ok()).toBeTruthy();
-  return { id: user.id as string, email, password };
-}
 
 async function createWorkspace(page: Page, name: string, slug: string) {
   await page.goto("/workspaces/new");

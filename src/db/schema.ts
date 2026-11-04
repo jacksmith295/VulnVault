@@ -198,3 +198,20 @@ export const legacyUsers = pgTable("users", {
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
 });
+
+export const service = pgTable("service", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull().references(() => organization.id, { onDelete: "restrict" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  archivedAt: timestamp("archived_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  version: integer("version").default(1).notNull(),
+}, (table) => [index("service_workspace_archive_idx").on(table.workspaceId, table.archivedAt)]);
+
+export const serviceRepository = pgTable("service_repository", {
+  id: text("id").primaryKey(),
+  serviceId: text("service_id").notNull().references(() => service.id, { onDelete: "cascade" }),
+  url: text("url").notNull(),
+}, (table) => [uniqueIndex("service_repository_service_url_unique").on(table.serviceId, table.url)]);

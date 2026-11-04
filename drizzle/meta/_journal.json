@@ -15,6 +15,13 @@
       "when": 1793803612065,
       "tag": "0001_lazy_mesmero",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793808061290,
+      "tag": "0002_free_master_mold",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,6 @@
 # VulnVault
 
-VulnVault tracks vulnerabilities across services and repositories, with a dedicated workflow for triage and remediation. Development is local first. Email/password authentication and workspace onboarding are implemented. Services and findings follow incrementally.
+VulnVault tracks vulnerabilities across services and repositories, with a dedicated workflow for triage and remediation. Development is local first. Email/password authentication, workspace onboarding, and service management are implemented. Findings follow incrementally.
 
 See [working agreements](AGENTS.md), [the MVP plan](docs/mvp-plan.md), and [the authentication/workspace design](docs/auth-workspace-design.md).
 
@@ -26,7 +26,7 @@ Open [VulnVault](http://localhost:3000) and the [development inbox](http://local
 
 Registration creates an account without creating a workspace. After login, users without memberships see onboarding and can create a workspace. Creation makes them its owner. A persistent header has a top-left workspace dropdown with Create workspace + and All workspaces links.
 
-Login opens the last used accessible workspace in this browser, falling back to the first accessible workspace. The preference is scoped to the account and never grants access. Each tab keeps the workspace in its own URL. `/workspaces` lists memberships explicitly. Invitations, member administration, services, and findings follow later. Plugin organisation APIs remain disabled; creation uses an application Server Action and a database transaction.
+Login opens the last used accessible workspace in this browser, falling back to the first accessible workspace. The preference is scoped to the account and never grants access. Each tab keeps the workspace in its own URL. `/workspaces` lists memberships explicitly. Owners/admins can create and edit services with optional descriptions and repository URLs, archive them, and restore them. Members can view active and archived services. Invitations, member administration, and findings follow later. Plugin organisation APIs remain disabled; creation uses an application Server Action and a database transaction.
 
 Compose exposes PostgreSQL at `localhost:5432`, SMTP at `127.0.0.1:1025`, and the inbox at `127.0.0.1:8025`. Its credentials are development-only. PostgreSQL data persists in the `vulnvault_postgres_data` volume. Stop infrastructure with `docker compose stop`; do not remove its volume unless you intend to erase development data.
 
@@ -64,7 +64,7 @@ npm run db:migrate
 
 Review generated SQL before applying it. Changes that could discard data need an explicit migration plan. Schema generation and applying migrations are separate operations; starting the app does not silently rewrite the database.
 
-The original `0000` migration and scaffold `users` table are preserved. The additive `0001` migration creates Better Auth's tables. Existing scaffold rows remain intact but do not automatically become login accounts; their password format and verification state have not been established. Register through the application for the new authentication flow.
+The original `0000` migration and scaffold `users` table are preserved. The additive `0001` migration creates Better Auth's tables, and `0002` adds services and their repository associations. Existing scaffold rows remain intact but do not automatically become login accounts; their password format and verification state have not been established. Register through the application for the new authentication flow.
 
 ## Delivery
 

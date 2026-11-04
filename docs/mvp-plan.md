@@ -20,7 +20,7 @@ The application is initially self-hosted locally. Public hosting, cloud infrastr
 
 ## Current repository
 
-The repository started with a Next.js App Router frontend, TypeScript, Tailwind, shadcn components, and login/register forms with Zod schemas. The first implementation slice adds persisted authentication, local infrastructure, the workspace schema foundation, integration tests, and browser tests. Workspace onboarding is implemented on its feature branch and awaiting PR review.
+Authentication and workspace onboarding are merged, including local infrastructure, shared app header, workspace selector, integration tests, and browser tests. Service management is implemented on its feature branch and awaiting PR review.
 
 At initialisation, the login form and login schema contained user changes. Preserve these when implementing subsequent work.
 
@@ -94,14 +94,6 @@ Public deployment, cloud scaling, separate ingestion infrastructure, enterprise 
 
 ## Next design discussion
 
-The [authentication and workspace design](auth-workspace-design.md) records the agreed foundation and three independently reviewable implementation slices. Authentication is the first; remaining workspace details are discussed before their implementation.
-
-Before coding the next workspace slice, resolve:
-
-1. Workspace onboarding details: creation, owner membership, selection, and invitation delivery timing. Users can choose to create a workspace or join one by invitation; neither is automatic at registration.
-2. Minimum roles and their permissions, including whether an instance administrator is needed.
-3. Final workspace route and selection behaviour for users with multiple memberships.
-4. Ownership safeguards and server-side permission configuration for every exposed workspace endpoint.
-5. Any additional schema constraints, concurrency handling, and acceptance criteria for the slice.
+The [service management plan](service-management-plan.md) records the approved schema and implementation slice, now implemented on its feature branch. The user accepted name, optional description, repository URLs, owner/admin management, member viewing, and archiving. The additive migration, permissions, repository associations, and archive/restore lifecycle are ready for PR review. Services precede invitations for the initial solo workflow; invitation and membership management remain planned separately.
 
 Use a separate implementation agent and review agent. Review the proposed design as well as the resulting code. Feature branches and pushes are authorised; PRs remain for the user's review and approval before merging.
