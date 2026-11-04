@@ -4,16 +4,13 @@ import { randomUUID } from "node:crypto";
 import { and, asc, eq, notInArray, sql } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { db } from "@/db";
-import {
-  finding,
-  findingReference,
-  member,
-  organization,
-  service,
-} from "@/db/schema";
+import { finding, findingReference, service } from "@/db/schema";
 import { requireSession } from "@/lib/auth-session";
 import { requireService } from "@/features/services/data";
-import { workspaceRoles } from "@/features/workspaces/data";
+import {
+  lockWorkspaceAccess,
+  serviceAccessCondition,
+} from "@/features/groups/access";
 import { versionSchema } from "@/features/services/validation";
 import { createFindingSchema, editFindingSchema } from "./validation";
 
@@ -32,12 +29,19 @@ const conflict = {
 
 export async function listFindings(slug: string, serviceId: string) {
   const scope = await requireService(slug, serviceId);
+  const { user } = await requireSession();
   const findings = await db
-    .select()
+    .select({ finding })
     .from(finding)
-    .where(eq(finding.serviceId, scope.service.id))
+    .innerJoin(service, eq(service.id, finding.serviceId))
+    .where(
+      and(
+        eq(finding.serviceId, scope.service.id),
+        serviceAccessCondition(user.id),
+      ),
+    )
     .orderBy(asc(finding.createdAt), asc(finding.id));
-  return { ...scope, findings };
+  return { ...scope, findings: findings.map((row) => row.finding) };
 }
 export async function requireFinding(
   slug: string,
@@ -45,16 +49,32 @@ export async function requireFinding(
   id: string,
 ) {
   const scope = await requireService(slug, serviceId);
-  const [found] = await db
-    .select()
+  const { user } = await requireSession();
+  const [row] = await db
+    .select({ finding })
     .from(finding)
-    .where(and(eq(finding.serviceId, scope.service.id), eq(finding.id, id)))
+    .innerJoin(service, eq(service.id, finding.serviceId))
+    .where(
+      and(
+        eq(finding.serviceId, scope.service.id),
+        eq(finding.id, id),
+        serviceAccessCondition(user.id),
+      ),
+    )
     .limit(1);
-  if (!found) notFound();
+  if (!row) notFound();
+  const found = row.finding;
   const references = await db
     .select({ id: findingReference.id, url: findingReference.url })
     .from(findingReference)
-    .where(eq(findingReference.findingId, found.id))
+    .innerJoin(finding, eq(finding.id, findingReference.findingId))
+    .innerJoin(service, eq(service.id, finding.serviceId))
+    .where(
+      and(
+        eq(findingReference.findingId, found.id),
+        serviceAccessCondition(user.id),
+      ),
+    )
     .orderBy(asc(findingReference.url));
   return { ...scope, finding: found, references };
 }
@@ -66,21 +86,17 @@ async function lockScope(
   serviceId: string,
   userId: string,
 ) {
-  // Hold membership and service locks through commit so revocation and archival serialize with writes.
-  const [workspace] = await tx
-    .select({ id: organization.id, role: member.role })
-    .from(member)
-    .innerJoin(organization, eq(member.organizationId, organization.id))
-    .where(and(eq(member.userId, userId), eq(organization.slug, slug)))
-    .limit(1)
-    .for("share", { of: member });
-  if (!workspace || !workspaceRoles.some((role) => role === workspace.role))
-    return null;
+  const workspace = await lockWorkspaceAccess(tx, slug, userId);
+  if (!workspace) return null;
   const [active] = await tx
     .select({ id: service.id, archivedAt: service.archivedAt })
     .from(service)
     .where(
-      and(eq(service.id, serviceId), eq(service.workspaceId, workspace.id)),
+      and(
+        eq(service.id, serviceId),
+        eq(service.workspaceId, workspace.id),
+        serviceAccessCondition(userId),
+      ),
     )
     .limit(1)
     .for("share");
