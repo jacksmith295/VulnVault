@@ -1,27 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { expect, test, type BrowserContext, type Page } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { Pool } from "pg";
-import { emailLink, login } from "./helpers";
+import { verifiedAccount, login } from "./helpers";
 
 const origin = "http://127.0.0.1:3100";
-
-async function verifiedAccount(context: BrowserContext) {
-  const email = `workspace-${randomUUID()}@example.com`;
-  const password = "WorkspaceTestPassword-123!";
-  await context.setExtraHTTPHeaders({
-    "x-forwarded-for": `198.18.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250) + 1}`,
-    origin,
-  });
-  const response = await context.request.post(`${origin}/api/auth/sign-up/email`, {
-    data: { name: "Workspace Developer", email, password, callbackURL: "/login?verified=true" },
-  });
-  expect(response.ok()).toBeTruthy();
-  const { user } = await response.json();
-  await context.request.get(await emailLink(context.request, email, "verify"));
-  const login = await context.request.post(`${origin}/api/auth/sign-in/email`, { data: { email, password } });
-  expect(login.ok()).toBeTruthy();
-  return { id: user.id as string, email, password };
-}
 
 async function createWorkspace(page: Page, name: string, slug: string) {
   await page.goto("/workspaces/new");
@@ -51,6 +33,18 @@ test("workspace creation, persistent selector, default navigation, and independe
     await expect(page.getByText("Your role: owner", { exact: true })).toBeVisible();
     await expect(page.locator("header")).toBeVisible();
     let selector = await openSelector(page);
+    await selector.getByRole("navigation").click({ position: { x: 4, y: 20 } });
+    await expect(selector).toHaveAttribute("open", "");
+    await page.getByRole("heading", { name: "Solo Projects", exact: true }).evaluate((heading) => {
+      heading.addEventListener("pointerdown", (event) => event.stopPropagation(), { once: true });
+    });
+    await page.getByRole("heading", { name: "Solo Projects", exact: true }).click();
+    await expect(selector).not.toHaveAttribute("open", "");
+    selector = await openSelector(page);
+    await page.keyboard.press("Escape");
+    await expect(selector).not.toHaveAttribute("open", "");
+    await expect(selector.locator("summary")).toBeFocused();
+    selector = await openSelector(page);
     await expect(selector.getByRole("link", { name: "All workspaces", exact: true })).toBeVisible();
     await selector.getByRole("link", { name: "Create workspace +", exact: true }).click();
     await expect(page).toHaveURL(`${origin}/workspaces/new`);

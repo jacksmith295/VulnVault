@@ -2,9 +2,11 @@ import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import { Pool } from "pg";
 
-import { emailLink, login } from "./helpers";
+import { clientHeaders, emailLink, login } from "./helpers";
 
-test("account verification, sessions, recovery, and reset replay work end to end", async ({ page, request, browser }) => {
+test("account verification, sessions, recovery, and reset replay work end to end", async ({ page, context, request, browser }) => {
+  const headers = clientHeaders();
+  await context.setExtraHTTPHeaders(headers);
   const email = `browser-${randomUUID()}@example.com`;
   const password = "InitialPassword-123!";
   const newPassword = "ReplacementPassword-456!";
@@ -26,7 +28,7 @@ test("account verification, sessions, recovery, and reset replay work end to end
   await expect(page.getByRole("heading", { name: "Welcome, Browser Developer" })).toBeVisible();
 
   // A second real browser session proves recovery invalidates other devices.
-  const otherContext = await browser.newContext();
+  const otherContext = await browser.newContext({ extraHTTPHeaders: headers });
   try {
     const otherPage = await otherContext.newPage();
     await login(otherPage, email, password);
