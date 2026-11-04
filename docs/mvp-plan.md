@@ -20,7 +20,7 @@ The application is initially self-hosted locally. Public hosting, cloud infrastr
 
 ## Current repository
 
-Authentication and workspace onboarding are merged, including local infrastructure, shared app header, workspace selector, integration tests, and browser tests. Service management is merged. The approved UI foundation refactor is implemented on its feature branch and awaiting PR review.
+Authentication and workspace onboarding are merged, including local infrastructure, shared app header, workspace selector, integration tests, and browser tests. Service management is merged. The UI foundation and staged UI pre-commit hook are merged. Manual findings are implemented on their feature branch for review.
 
 At initialisation, the login form and login schema contained user changes. Preserve these when implementing subsequent work.
 
@@ -59,9 +59,9 @@ Acceptance targets:
 
 ### 3. Manual findings and workflow
 
-Agree on the smallest useful finding record and board experience using real examples from the user's projects. Candidate information includes title, description, severity, affected service, references, evidence, and remediation notes; none is a final field requirement yet.
+The user agreed on one service per finding, title, description, severity, optional reference URLs, and optional remediation notes. Members can create and update findings. No role can delete findings, and findings in archived services are read-only until restoration. See the [manual findings plan](manual-findings-plan.md) for the approved schema and lifecycle. The list/detail/edit slice precedes the board and assignment.
 
-Agree on statuses and transitions, assignment rules, rejection reasons, reopening, and what counts as remediation. Rejected findings must be supported; the full status list is not settled.
+The initial statuses are New, Triaged, In progress, Resolved, Rejected, and Accepted risk. Any status may transition to another, including reopening. Assignment, rejection reasons, and board interaction remain separate design decisions.
 
 Acceptance targets:
 
@@ -94,6 +94,6 @@ Public deployment, cloud scaling, separate ingestion infrastructure, enterprise 
 
 ## Next design discussion
 
-The [service management plan](service-management-plan.md) records the merged service slice. The [UI foundation plan](ui-foundation-plan.md) now takes priority before further feature delivery. The user accepted name, optional description, repository URLs, owner/admin management, member viewing, and archiving. The service migration, permissions, repository associations, and archive/restore lifecycle are merged. Services precede invitations for the initial solo workflow; invitation and membership management remain planned separately.
+Services, the [UI foundation](ui-foundation-plan.md), and the staged UI pre-commit hook are merged. The [manual findings plan](manual-findings-plan.md) is approved and implemented for PR review. Board/assignment and invitation/membership management remain separate slices.
 
 Use a separate implementation agent and review agent. Review the proposed design as well as the resulting code. Feature branches and pushes are authorised; PRs remain for the user's review and approval before merging.
