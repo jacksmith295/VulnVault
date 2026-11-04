@@ -1,6 +1,6 @@
 # Authentication and workspace foundation
 
-Status: the user agreed the workspace model, owner/admin/member responsibilities, required email verification, and seven-day sessions refreshed with activity and revoked after password reset. Implementation is proceeding with PR 1 below. Workspace onboarding and invitations remain later implementation slices; their detailed behaviour needs discussion.
+Status: the user agreed the workspace model, owner/admin/member responsibilities, required email verification, and seven-day sessions refreshed with activity and revoked after password reset. PR 1 is merged. PR 2 workspace onboarding is in progress. The agreed workspace onboarding details are recorded in [the PR 2 plan](workspace-onboarding-plan.md). Invitations remain a later slice.
 
 ## Outcome
 
@@ -66,7 +66,7 @@ Email verification and session behaviour are agreed. Other lifetimes below are i
 - Restrict callback destinations and trusted origins. Bind local database and inbox ports to loopback. Keep development credentials separate from future hosting configuration.
 - Invitation acceptance requires a signed-in user with the verified recipient email. Possessing a forwarded link or sharing an email domain grants no membership. Accepting twice must not create duplicate memberships; expired, cancelled, and wrong-recipient invitations must fail safely.
 
-The first slice retains passwords of 8 to 128 characters. Workspace administration and invitation operations remain disabled until their implementation slices; the underlying tables are present.
+The first slice retains passwords of 8 to 128 characters. Plugin workspace administration and invitation operations remain disabled until their reviewed implementation slices; the underlying tables are present. PR 2 creates workspaces through an application Server Action with an explicit transaction.
 
 ## Next.js responsibilities
 
@@ -91,7 +91,7 @@ Verify migrations against an empty isolated database, credential validation, ses
 
 ### PR 2: Workspace onboarding and access
 
-Add workspace creation, list/selection, a protected workspace landing page, and role-aware access helpers. Creation establishes the creator's owner membership atomically; failure must not leave an ownerless workspace. Do not add services yet.
+Add workspace creation, a persistent header with a top-left workspace selector, an explicit All workspaces page, a protected workspace landing page, and role-aware access helpers. Login opens the last selected accessible workspace in this browser, with a stable fallback; users without memberships see onboarding. A cookie stores the preference as a navigation hint, and membership checks remain authoritative. Creation establishes the creator's owner membership atomically; failure must not leave an ownerless workspace. Do not add services yet.
 
 Verify creation, slug collision handling, multiple memberships, direct access denial for non-members, membership revocation, and correct workspace targeting across tabs. Where member-management UI is absent, create test memberships through controlled fixtures rather than weakening production access checks.
 

@@ -1,6 +1,6 @@
 # VulnVault
 
-VulnVault tracks vulnerabilities across services and repositories, with a dedicated workflow for triage and remediation. Development is local first. The current implementation slice adds email/password authentication; workspace onboarding, services, and findings follow incrementally.
+VulnVault tracks vulnerabilities across services and repositories, with a dedicated workflow for triage and remediation. Development is local first. Email/password authentication and workspace onboarding are implemented. Services and findings follow incrementally.
 
 See [working agreements](AGENTS.md), [the MVP plan](docs/mvp-plan.md), and [the authentication/workspace design](docs/auth-workspace-design.md).
 
@@ -24,7 +24,9 @@ npm run dev
 
 Open [VulnVault](http://localhost:3000) and the [development inbox](http://localhost:8025). Register, open the verification email in Mailpit, follow its link, and log in. Password reset emails also appear in Mailpit. These messages stay local; the inbox does not deliver to real recipients.
 
-Registration creates an account without creating a workspace. The protected dashboard is an account landing page until workspace onboarding is implemented. The database includes the workspace membership foundation, but workspace operations are disabled during this slice.
+Registration creates an account without creating a workspace. After login, users without memberships see onboarding and can create a workspace. Creation makes them its owner. A persistent header has a top-left workspace dropdown with Create workspace + and All workspaces links.
+
+Login opens the last used accessible workspace in this browser, falling back to the first accessible workspace. The preference is scoped to the account and never grants access. Each tab keeps the workspace in its own URL. `/workspaces` lists memberships explicitly. Invitations, member administration, services, and findings follow later. Plugin organisation APIs remain disabled; creation uses an application Server Action and a database transaction.
 
 Compose exposes PostgreSQL at `localhost:5432`, SMTP at `127.0.0.1:1025`, and the inbox at `127.0.0.1:8025`. Its credentials are development-only. PostgreSQL data persists in the `vulnvault_postgres_data` volume. Stop infrastructure with `docker compose stop`; do not remove its volume unless you intend to erase development data.
 
