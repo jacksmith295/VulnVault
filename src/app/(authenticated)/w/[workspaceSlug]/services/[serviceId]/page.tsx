@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import { Page, PageHeader } from "@/components/layout";
 import { TextLink } from "@/components/ui/link";
 import { listFindings } from "@/features/findings/data";
 import { FindingsList } from "@/features/findings/components/FindingsList";
 import { ServiceDetails } from "@/features/services/components/ServiceDetails";
+
+export const metadata: Metadata = { title: "Service details" };
 
 export default async function ServicePage({
   params,

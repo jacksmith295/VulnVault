@@ -42,11 +42,15 @@ description: Build or change VulnVault pages, forms, shared components, styling,
 - Preserve unsaved form values and their original version tokens together. Keep component identity stable across theme changes and refreshed server props. Retain the existing service form key, which includes the workspace slug and either the service ID or the new-service marker.
 - Preserve semantic landmarks and heading levels. Keep navigation as real links and actions as buttons. Do not nest links or buttons inside another interactive element.
 - Provide accessible labels and validation errors. Preserve keyboard operation, visible focus, and focus return after dismissing menus. Respect reduced motion.
+- Target WCAG 2.2 AA. Check rendered contrast, including translucent backgrounds and hover states: normal text needs 4.5:1, large text 3:1, and essential control boundaries and state indicators 3:1 against adjacent colours. Decorative borders and disabled controls have different requirements. Keep focus outlines opaque, separated from filled controls, and visible in forced-colors mode; do not rely on a faint background change for keyboard selection.
+- Include visible control text in its accessible name. Provide skip navigation to the main landmark and keep focused controls clear of sticky headers. After an update removes or moves the focused item, announce the result and move focus to a stable, meaningful target.
+- Ensure targets meet the 24 CSS pixel minimum or a documented WCAG exception. Preserve password paste and autocomplete. Check 320 CSS pixel reflow, 200% text resizing, and WCAG text-spacing overrides without clipped content or controls.
 
 ## Verify the change
 
 - Run lint and TypeScript checks. Use the root `AGENTS.md` verification rules to select the remaining application checks.
 - Check the affected screens at mobile and desktop widths in both themes. For theme changes, also check persistence, system preference changes, and switching themes with unsaved form input.
 - For changed controls, check keyboard operation and error feedback. For changed service forms, check that dirty input retains its original version token.
+- Use the existing axe Playwright coverage for representative routes and open overlay states in both themes. Supplement it with keyboard, focus, contrast, resizing, and spacing checks. Record automated results and manual limits separately; a passing axe scan does not establish full WCAG conformance or replace assistive-technology testing.
 - If browser checks cannot run, state that limit and list the manual checks still required.
 - Exercise delayed data and filter navigation, not only fast responses. Check skeleton-to-content geometry, scroll retention, and hydration stability. For dense boards, check that all columns fit at the intended desktop widths and that inactive mobile panels remain inaccessible to keyboard focus.

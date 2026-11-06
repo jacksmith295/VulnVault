@@ -16,7 +16,7 @@ async function createWorkspace(page: Page, name: string, slug: string) {
 }
 
 async function openSelector(page: Page) {
-  const trigger = page.getByRole("button", { name: "Switch workspace", exact: true });
+  const trigger = page.getByRole("button", { name: /^Switch workspace:/u });
   if (await trigger.getAttribute("aria-expanded") !== "true") await trigger.click();
   return page.getByRole("menu");
 }
@@ -41,14 +41,14 @@ test("workspace creation, persistent selector, default navigation, and independe
     if (!outside) throw new Error("Expected a visible workspace heading.");
     await page.mouse.click(outside.x + outside.width * 0.9, outside.y + outside.height / 2);
     await expect(selector).not.toBeVisible();
-    const workspaceTrigger = page.getByRole("button", { name: "Switch workspace", exact: true });
+    const workspaceTrigger = page.getByRole("button", { name: /^Switch workspace:/u });
     await workspaceTrigger.focus();
     await workspaceTrigger.press("ArrowDown");
     selector = page.getByRole("menu");
     await expect(selector.getByRole("menuitem").first()).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(selector).not.toBeVisible();
-    await expect(page.getByRole("button", { name: "Switch workspace", exact: true })).toBeFocused();
+    await expect(page.getByRole("button", { name: /^Switch workspace:/u })).toBeFocused();
     selector = await openSelector(page);
     await expect(selector.getByRole("menuitem", { name: "All workspaces", exact: true })).toBeVisible();
     await selector.getByRole("menuitem", { name: "Create workspace +", exact: true }).click();

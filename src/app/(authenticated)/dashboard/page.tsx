@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Page, PageHeader, Section, Stack } from "@/components/layout";
 import { AppLink } from "@/components/ui/link";
 import { Text } from "@/components/ui/typography";
@@ -9,6 +10,8 @@ import {
   workspaceCookie,
 } from "@/features/workspaces/preference";
 import { requireSession } from "@/lib/auth-session";
+
+export const metadata: Metadata = { title: "Dashboard" };
 
 export default async function DashboardPage() {
   const { user } = await requireSession();

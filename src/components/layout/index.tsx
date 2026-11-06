@@ -2,6 +2,7 @@ import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Heading, Text } from "@/components/ui/typography";
 import { ThemeSelector } from "@/components/theme/ThemeSelector";
+import { SkipLink } from "./skip-link";
 const widths = {
   default: "max-w-6xl",
   narrow: "max-w-[40rem]",
@@ -19,6 +20,8 @@ export function Page({
 }) {
   return (
     <main
+      id="main-content"
+      tabIndex={-1}
       className={cn(
         "mx-auto flex w-full min-w-0 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8",
         widths[width],
@@ -176,12 +179,17 @@ export function PublicShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-dvh">
       <header className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-5 sm:px-6">
+        <SkipLink />
         <span className="font-heading text-lg font-semibold tracking-tight text-primary">
           VulnVault
         </span>
         <ThemeSelector />
       </header>
-      <main className="mx-auto flex w-full max-w-md flex-col px-4 pb-12 pt-4 sm:pt-10">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="mx-auto flex w-full max-w-md flex-col px-4 pb-12 pt-4 sm:pt-10"
+      >
         {children}
       </main>
     </div>
@@ -248,7 +256,9 @@ export function DefinitionItem({
   return (
     <div className="min-w-0 space-y-1">
       <dt className="text-sm text-muted-foreground">{label}</dt>
-      <dd className="text-sm font-medium [overflow-wrap:anywhere]">{children}</dd>
+      <dd className="text-sm font-medium [overflow-wrap:anywhere]">
+        {children}
+      </dd>
     </div>
   );
 }

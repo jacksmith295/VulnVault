@@ -3,7 +3,7 @@ import type { ComponentProps } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 const linkVariants = cva(
-  "min-w-0 max-w-full rounded-lg font-medium outline-none motion-safe:transition-[color,background-color,border-color,box-shadow,opacity] motion-safe:duration-(--motion-duration-fast) motion-safe:ease-(--motion-ease-out) focus-visible:ring-3 focus-visible:ring-ring/50 [overflow-wrap:anywhere]",
+  "min-w-0 max-w-full rounded-lg font-medium outline-hidden motion-safe:transition-[color,background-color,border-color,box-shadow,opacity] motion-safe:duration-(--motion-duration-fast) motion-safe:ease-(--motion-ease-out) focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-ring [overflow-wrap:anywhere]",
   {
     variants: {
       variant: {

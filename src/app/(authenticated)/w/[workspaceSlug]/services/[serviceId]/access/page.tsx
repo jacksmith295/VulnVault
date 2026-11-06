@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import { Page, PageHeader } from "@/components/layout";
 import { TextLink } from "@/components/ui/link";
 import { ServiceAccessForm } from "@/features/groups/components/ServiceAccessForm";
 import { getServiceAccess } from "@/features/groups/data";
+
+export const metadata: Metadata = { title: "Service access" };
 
 export default async function ServiceAccessPage({
   params,

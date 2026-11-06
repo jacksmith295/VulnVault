@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { TextLink } from "@/components/ui/link";
 
 import { AuthCard } from "@/features/auth/components/AuthCard";
@@ -6,6 +7,8 @@ import { ResetPasswordForm } from "@/features/auth/components/ResetPasswordForm"
 type ResetPasswordPageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
+
+export const metadata: Metadata = { title: "Choose a new password" };
 
 export default async function ResetPasswordPage({
   searchParams,

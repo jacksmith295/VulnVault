@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import { Page, PageHeader } from "@/components/layout";
 import { TextLink } from "@/components/ui/link";
 import { requireWorkspace } from "@/features/workspaces/data";
 import { ServiceForm } from "@/features/services/components/ServiceForm";
+
+export const metadata: Metadata = { title: "Create service" };
 
 export default async function NewServicePage({
   params,

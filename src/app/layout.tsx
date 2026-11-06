@@ -10,7 +10,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "VulnVault",
+  title: { default: "VulnVault", template: "%s | VulnVault" },
   description: "Vulnerability Management Platform",
   referrer: "no-referrer",
 };

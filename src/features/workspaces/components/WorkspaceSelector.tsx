@@ -46,7 +46,9 @@ export function WorkspaceSelector({ workspaces }: { workspaces: Workspace[] }) {
 
   return (
     <Menu key={route}>
-      <MenuTrigger aria-label="Switch workspace">
+      <MenuTrigger
+        aria-label={`Switch workspace: ${current?.name ?? "Workspaces"}`}
+      >
         {current?.name ?? "Workspaces"}
       </MenuTrigger>
       <MenuPopup>

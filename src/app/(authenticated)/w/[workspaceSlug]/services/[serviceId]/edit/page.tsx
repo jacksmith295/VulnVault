@@ -1,9 +1,12 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Page, PageHeader } from "@/components/layout";
 import { TextLink } from "@/components/ui/link";
 import { Text } from "@/components/ui/typography";
 import { requireService } from "@/features/services/data";
 import { ServiceForm } from "@/features/services/components/ServiceForm";
+
+export const metadata: Metadata = { title: "Edit service" };
 
 export default async function EditServicePage({
   params,

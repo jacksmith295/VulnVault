@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import LoginForm from "@/features/auth/components/LoginForm";
 
 type LoginPageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
+
+export const metadata: Metadata = { title: "Login" };
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const query = await searchParams;

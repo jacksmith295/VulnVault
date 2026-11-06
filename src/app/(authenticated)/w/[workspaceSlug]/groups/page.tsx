@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import { Page, PageHeader, Section } from "@/components/layout";
 import { TextLink } from "@/components/ui/link";
 import { GroupForm } from "@/features/groups/components/GroupForm";
 import { GroupList } from "@/features/groups/components/GroupList";
 import { listGroups } from "@/features/groups/data";
+
+export const metadata: Metadata = { title: "Groups" };
 
 export default async function GroupsPage({
   params,
