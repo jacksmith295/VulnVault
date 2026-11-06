@@ -20,9 +20,12 @@ export default async function WorkspacePage({
         title={workspace.name}
         description={`Your role: ${workspace.role}`}
         actions={
-          ["owner", "admin"].includes(workspace.role) && (
-            <AppLink href={`/w/${workspace.slug}/groups`}>Groups</AppLink>
-          )
+          <Inline>
+            <AppLink href={`/w/${workspace.slug}/findings`}>Findings</AppLink>
+            {["owner", "admin"].includes(workspace.role) && (
+              <AppLink href={`/w/${workspace.slug}/groups`}>Groups</AppLink>
+            )}
+          </Inline>
         }
       />
       <Stack>

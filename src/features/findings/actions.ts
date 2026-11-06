@@ -22,6 +22,7 @@ export async function saveFindingAction(
   if (result.error !== undefined)
     return { error: result.error, conflict: result.conflict };
   const base = `/w/${slug}/services/${serviceId}`;
+  revalidatePath(`/w/${slug}/findings`);
   revalidatePath(base);
   revalidatePath(`${base}/findings/${result.finding.id}`);
   redirect(`${base}/findings/${result.finding.id}`);

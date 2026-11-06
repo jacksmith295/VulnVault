@@ -12,7 +12,8 @@ import {
   serviceAccessCondition,
 } from "@/features/groups/access";
 import { versionSchema } from "@/features/services/validation";
-import { createFindingSchema, editFindingSchema } from "./validation";
+import { createFindingSchema, editFindingSchema, statuses } from "./validation";
+import { z } from "zod";
 
 export type Finding = typeof finding.$inferSelect;
 export type FindingResult =
@@ -177,12 +178,7 @@ export async function editFinding(
       if (!existing) return denied;
       const { referenceUrls, ...details } = parsed.data;
       const now = new Date();
-      const resolvedAt =
-        details.status === "resolved"
-          ? existing.status === "resolved"
-            ? existing.resolvedAt
-            : now
-          : null;
+      const resolvedAt = resolutionDate(existing, details.status, now);
       const [updated] = await tx
         .update(finding)
         .set({
@@ -200,5 +196,55 @@ export async function editFinding(
     });
   } catch {
     return { error: "Unable to save the finding. Please try again." };
+  }
+}
+
+// Repeated resolved edits retain the original resolution; reopening clears it.
+function resolutionDate(existing: Finding, status: string, now: Date) {
+  return status === "resolved"
+    ? existing.status === "resolved"
+      ? existing.resolvedAt
+      : now
+    : null;
+}
+
+export async function changeFindingStatus(
+  slug: string,
+  serviceId: string,
+  id: string,
+  version: number,
+  targetStatus: unknown,
+): Promise<FindingResult> {
+  const { user } = await requireSession();
+  const parsed = z.enum(statuses).safeParse(targetStatus);
+  if (!parsed.success) return { error: "Select a valid finding status." };
+  if (!versionSchema.safeParse(version).success) return conflict;
+  try {
+    return await db.transaction(async (tx): Promise<FindingResult> => {
+      if (!(await lockScope(tx, slug, serviceId, user.id))) return denied;
+      const scope = and(eq(finding.serviceId, serviceId), eq(finding.id, id));
+      const [existing] = await tx
+        .select()
+        .from(finding)
+        .where(scope)
+        .limit(1)
+        .for("update");
+      if (!existing) return denied;
+      const now = new Date();
+      const [updated] = await tx
+        .update(finding)
+        .set({
+          status: parsed.data,
+          resolvedAt: resolutionDate(existing, parsed.data, now),
+          updatedBy: user.id,
+          updatedAt: now,
+          version: sql`${finding.version} + 1`,
+        })
+        .where(and(scope, eq(finding.version, version)))
+        .returning();
+      return updated ? { finding: updated } : conflict;
+    });
+  } catch {
+    return { error: "Unable to save the finding status. Please try again." };
   }
 }
