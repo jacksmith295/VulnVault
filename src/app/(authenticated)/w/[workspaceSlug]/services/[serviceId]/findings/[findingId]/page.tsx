@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import { Page, PageHeader } from "@/components/layout";
 import { TextLink } from "@/components/ui/link";
 import { requireFinding } from "@/features/findings/data";
 import { FindingDetails } from "@/features/findings/components/FindingDetails";
+export const metadata: Metadata = { title: "Finding details" };
+
 export default async function FindingPage({
   params,
 }: {

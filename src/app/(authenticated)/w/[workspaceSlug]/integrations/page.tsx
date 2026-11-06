@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Page, PageHeader, Section, Stack } from "@/components/layout";
 import { LoadingRegion } from "@/components/layout/loading";
@@ -7,6 +8,8 @@ import { isGithubConfigured } from "@/features/integrations/config";
 import { getIntegrationPageData } from "@/features/integrations/data";
 import { IntegrationList } from "@/features/integrations/components/IntegrationList";
 import { requireWorkspace } from "@/features/workspaces/data";
+
+export const metadata: Metadata = { title: "Integrations" };
 
 export default async function IntegrationsPage({
   params,

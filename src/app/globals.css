@@ -127,6 +127,8 @@
 
   html {
     @apply font-sans;
+    scroll-padding-block-start: calc(var(--app-header-height, 4.5rem) + 1rem);
+    scroll-padding-block-end: 1rem;
   }
 
   body {
@@ -155,5 +157,12 @@
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
     }
+  }
+}
+
+@media (forced-colors: active) {
+  :focus-visible,
+  [data-highlighted] {
+    outline-color: Highlight;
   }
 }

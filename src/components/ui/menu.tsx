@@ -35,10 +35,10 @@ export function MenuPopup({
       <MenuPrimitive.Positioner
         align={align}
         sideOffset={8}
-        className="z-50 outline-none"
+        className="z-50 outline-hidden"
       >
         <MenuPrimitive.Popup
-          className="max-h-(--available-height) w-72 max-w-[calc(100vw-2rem)] origin-(--transform-origin) overflow-y-auto rounded-xl border bg-popover p-1.5 text-popover-foreground shadow-lg outline-none motion-safe:transition-[opacity,scale] motion-safe:duration-(--motion-duration-normal) motion-safe:ease-(--motion-ease-out) motion-safe:data-starting-style:opacity-0 motion-safe:data-starting-style:scale-98 motion-safe:data-ending-style:opacity-0 motion-safe:data-ending-style:scale-98 data-instant:duration-0"
+          className="max-h-(--available-height) w-72 max-w-[calc(100vw-2rem)] origin-(--transform-origin) overflow-y-auto rounded-xl border bg-popover p-1.5 text-popover-foreground shadow-lg outline-hidden motion-safe:transition-[opacity,scale] motion-safe:duration-(--motion-duration-normal) motion-safe:ease-(--motion-ease-out) motion-safe:data-starting-style:opacity-0 motion-safe:data-starting-style:scale-98 motion-safe:data-ending-style:opacity-0 motion-safe:data-ending-style:scale-98 data-instant:duration-0"
           {...props}
         >
           {children}
@@ -48,7 +48,7 @@ export function MenuPopup({
   );
 }
 const itemClass =
-  "flex min-h-10 cursor-default items-center gap-3 rounded-md px-3 py-2 text-sm leading-snug outline-none select-none motion-safe:transition-[color,background-color,border-color,box-shadow,opacity] motion-safe:duration-(--motion-duration-fast) motion-safe:ease-(--motion-ease-out) data-highlighted:bg-accent data-highlighted:text-accent-foreground data-disabled:opacity-50";
+  "flex min-h-10 cursor-default items-center gap-3 rounded-md px-3 py-2 text-sm leading-snug outline-hidden select-none motion-safe:transition-[color,background-color,border-color,box-shadow,opacity] motion-safe:duration-(--motion-duration-fast) motion-safe:ease-(--motion-ease-out) data-highlighted:bg-accent data-highlighted:text-accent-foreground data-highlighted:outline-2 data-highlighted:outline-solid data-highlighted:-outline-offset-2 data-highlighted:outline-ring data-disabled:opacity-50";
 export function MenuItem({ className, ...props }: MenuPrimitive.Item.Props) {
   return (
     <MenuPrimitive.Item

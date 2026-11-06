@@ -22,7 +22,10 @@ import { statuses, statusLabels } from "../validation";
 import { FindingBadges } from "./FindingBadges";
 
 type Columns = Awaited<ReturnType<typeof getFindingBoard>>["columns"];
-type StatusFeedback = { error: string; conflict?: boolean } | undefined;
+type StatusFeedback =
+  | { error: string; conflict?: boolean; success?: never }
+  | { success: string; error?: never; conflict?: never }
+  | undefined;
 type BoardProps = {
   slug: string;
   filters: BoardFilters;
@@ -38,9 +41,20 @@ export function FindingBoard({
   const router = useRouter();
   // Server refreshes replace loaded pages, while action feedback survives the response.
   const [feedback, setFeedback] = useState<StatusFeedback>();
+  const successRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    // A moved card can leave the current column or filter. Keep focus on a
+    // persistent result instead of the menu trigger removed by the refresh.
+    if (feedback?.success) successRef.current?.focus();
+  }, [feedback?.success]);
   return (
     <Stack grow>
-      {feedback && <FormMessage>{feedback.error}</FormMessage>}
+      {feedback?.error && <FormMessage>{feedback.error}</FormMessage>}
+      {feedback?.success && (
+        <FormMessage tone="success" tabIndex={-1} ref={successRef}>
+          {feedback.success}
+        </FormMessage>
+      )}
       {feedback?.conflict && (
         <Button
           variant="outline"
@@ -89,7 +103,12 @@ function FindingBoardCard({
             error: `${finding.title}: ${result.error}`,
             conflict: result.conflict,
           });
-        } else router.refresh();
+        } else {
+          reportFeedback({
+            success: `${finding.title} moved to ${statusLabels[status]}.`,
+          });
+          router.refresh();
+        }
       } catch {
         reportFeedback({
           error: `${finding.title}: Could not change this finding. Refresh the board and try again.`,

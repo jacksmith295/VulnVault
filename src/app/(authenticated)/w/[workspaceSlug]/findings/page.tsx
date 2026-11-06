@@ -1,5 +1,8 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { requireWorkspace } from "@/features/workspaces/data";
+
+export const metadata: Metadata = { title: "Findings" };
 
 export default async function WorkspaceFindingsPage({
   params,

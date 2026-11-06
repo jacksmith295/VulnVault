@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Inline, Page, PageHeader, Stack } from "@/components/layout";
 import { BoardSpace } from "@/components/layout/board";
@@ -14,6 +15,8 @@ import { FindingBoardSkeleton } from "@/features/findings/components/FindingBoar
 import { requireWorkspace } from "@/features/workspaces/data";
 
 type Query = Record<string, string | string[] | undefined>;
+
+export const metadata: Metadata = { title: "Finding board" };
 
 export default async function WorkspacePage({
   params,

@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import { Page, PageHeader } from "@/components/layout";
 import { TextLink } from "@/components/ui/link";
 import { Text } from "@/components/ui/typography";
 import { requireFinding } from "@/features/findings/data";
 import { FindingForm } from "@/features/findings/components/FindingForm";
+export const metadata: Metadata = { title: "Edit finding" };
+
 export default async function EditFindingPage({
   params,
 }: {

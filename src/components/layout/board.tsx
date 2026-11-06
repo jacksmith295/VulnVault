@@ -39,7 +39,7 @@ export function StatusBoard({
           <Tabs.Tab
             key={column.status}
             value={column.status}
-            className="min-h-10 shrink-0 rounded-md px-3 text-sm font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/50 data-active:bg-card data-active:text-primary data-active:shadow-sm"
+            className="min-h-10 shrink-0 rounded-md px-3 text-sm font-medium outline-hidden focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-2 focus-visible:outline-ring data-active:bg-card data-active:text-primary data-active:shadow-sm"
           >
             {column.label}
           </Tabs.Tab>
@@ -56,7 +56,7 @@ export function StatusBoard({
             value={column.status}
             aria-label={column.regionLabel}
             className={cn(
-              "min-h-80 min-w-0 flex-col overflow-hidden rounded-xl border bg-muted/40 outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+              "min-h-80 min-w-0 flex-col overflow-hidden rounded-xl border bg-muted/40 outline-hidden focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-2 focus-visible:outline-ring",
               selected === column.status ? "flex" : "hidden xl:flex",
             )}
           >
@@ -71,7 +71,7 @@ export function StatusBoard({
                 role="group"
                 aria-label={`${column.regionLabel} cards`}
                 tabIndex={0}
-                className="min-h-0 min-w-0 flex-1 basis-0 overflow-y-auto p-3 outline-none focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/50 [overflow-wrap:anywhere] [&_button]:max-w-full [&_button]:min-w-0"
+                className="min-h-0 min-w-0 flex-1 basis-0 overflow-y-auto p-3 outline-hidden focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-2 focus-visible:outline-ring [overflow-wrap:anywhere] [&_button]:max-w-full [&_button]:min-w-0"
               >
                 {column.content}
               </div>
