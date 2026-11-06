@@ -20,7 +20,7 @@ The application is initially self-hosted locally. Public hosting, cloud infrastr
 
 ## Current repository
 
-Authentication and workspace onboarding are merged, including local infrastructure, shared app header, workspace selector, integration tests, and browser tests. Service management is merged. The UI foundation and staged UI pre-commit hook are merged. Manual findings are merged. Service access groups are merged. Hardening is merged. The workspace findings board is implemented on its feature branch for review.
+Authentication and workspace onboarding are merged, including local infrastructure, shared app header, workspace selector, integration tests, and browser tests. Service management is merged. The UI foundation and staged UI pre-commit hook are merged. Manual findings are merged. Service access groups are merged. Hardening is merged. The workspace findings board is implemented on its feature branch for review. It is the workspace home at `/w/[workspaceSlug]`, with a separate Services listing and a compatibility redirect from `/findings`.
 
 At initialisation, the login form and login schema contained user changes. Preserve these when implementing subsequent work.
 
@@ -61,7 +61,7 @@ Acceptance targets:
 
 The user agreed on one service per finding, title, description, severity, optional reference URLs, and optional remediation notes. Members can create and update findings. No role can delete findings, and findings in archived services are read-only until restoration. See the [manual findings plan](manual-findings-plan.md) for the approved schema and lifecycle. The list/detail/edit slice precedes the board and assignment.
 
-The initial statuses are New, Triaged, In progress, Resolved, Rejected, and Accepted risk. Any status may transition to another, including reopening. Assignment, rejection reasons, and board interaction remain separate design decisions.
+The initial statuses are New, Triaged, In progress, Resolved, Rejected, and Accepted risk. Any status may transition to another, including reopening. The board provides status menus; drag-and-drop, assignment, and rejection reasons remain separate design decisions.
 
 Acceptance targets:
 
@@ -94,6 +94,6 @@ Public deployment, cloud scaling, separate ingestion infrastructure, enterprise 
 
 ## Next design discussion
 
-Services, the [UI foundation](ui-foundation-plan.md), and the staged UI pre-commit hook are merged. Manual findings are merged. The [service access groups plan](service-access-groups-plan.md) is merged. The [project-review hardening slice](auth-hardening.md) is merged. The [workspace findings board](findings-board-plan.md) implements authorised filters, bounded status columns, and status menus; it is awaiting PR review. Drag-and-drop follows separately. Assignment and invitation/membership management remain separate slices.
+Services, the [UI foundation](ui-foundation-plan.md), and the staged UI pre-commit hook are merged. Manual findings are merged. The [service access groups plan](service-access-groups-plan.md) is merged. The [project-review hardening slice](auth-hardening.md) is merged. The [workspace findings board](findings-board-plan.md) implements the workspace home with authorised filters, bounded status columns, and status menus; it is awaiting PR review. Services sits beside Groups in the board header. Six fluid columns fit widths of at least 1280px, with status tabs below that breakpoint. Initial and filter loads use a stable Suspense skeleton and navigation transitions. Authenticated GET pagination and an isolated POST workspace preference endpoint preserve loaded pages until a deliberate refresh or board change. Drag-and-drop follows separately. Assignment and invitation/membership management remain separate slices.
 
 Use a separate implementation agent and review agent. Review the proposed design as well as the resulting code. Feature branches and pushes are authorised; PRs remain for the user's review and approval before merging.

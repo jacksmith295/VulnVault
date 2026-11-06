@@ -4,10 +4,12 @@ Status: implemented for PR review after the hardening merge. The user confirmed 
 
 ## Experience
 
-- Add `/w/[workspaceSlug]/findings` with navigation from the workspace services page. Keep service-specific finding details and editing at their existing URLs.
-- Desktop shows the six status columns: New, Triaged, In progress, Resolved, Rejected, and Accepted risk. Horizontal scrolling stays inside the board. Desktop columns have a bounded height, internal vertical scrolling, and sticky headings. Mobile status tabs show one column at a time.
+- Make `/w/[workspaceSlug]` the workspace findings board, retaining the workspace name as the page heading. Show Services beside Groups, with Groups limited to owners/admins. Services opens `/w/[workspaceSlug]/services`, including its active/archive tabs. Keep service-specific finding details and editing at their existing URLs.
+- Keep `/w/[workspaceSlug]/findings` as a compatibility redirect after verified-session and workspace-membership checks. Preserve every query key and repeated value so invalid filters still fail closed at the canonical board URL.
+- At viewport widths of 1280px and above, show six fluid status columns: New, Triaged, In progress, Resolved, Rejected, and Accepted risk. The columns fill the available width without horizontal board scrolling. Each has a bounded height, independent vertical card scrolling, and a heading that stays visible. Below 1280px, status tabs show one column at a time.
 - Cards show title, severity, affected service, and a status menu. Titles link to finding details. Menus change status after server confirmation; dragging, assignment, and deletion are outside this slice.
 - Filters select group, service, severity, status, and active/archived/all services. Active services are the default. Keep filter state in the URL for refresh, browser history, and sharing. Applying or clearing filters resets loaded pages.
+- Load the initial filters and board inside a React Suspense boundary, with a skeleton that reserves their layout space while data is pending. Applying and clearing filters use navigation transitions with pending feedback and preserve page scroll.
 - Each column starts with at most 20 cards, newest first. Load more retrieves another bounded page for that column. Column totals represent every matching authorised finding, not only loaded cards. A selected status also applies to totals, so the other columns have zero matching findings.
 - Archived-service cards remain readable and have no status action. Restoring remains an owner/admin service operation.
 - Use shared TSX layout and styled Base UI primitives, green semantic theme tokens, keyboard-accessible menus/tabs, and clear pending/error feedback. Keep page overflow contained at mobile and desktop widths.
@@ -32,12 +34,14 @@ Add a status-only mutation that shares the existing workspace-first permission l
 
 Set the resolution timestamp when entering Resolved, preserve it for an unchanged Resolved status, and clear it when leaving Resolved. No-op transitions do not bypass concurrency checks. Stale or unauthorised updates return recoverable feedback without overwriting newer work.
 
-Server Components load the initial board. Authenticated Server Actions serve bounded additional pages and status mutations. Reset loaded pages after successful status updates or refreshed server data. Revalidate the board after finding and service mutations; existing group/access layout invalidation also covers it.
+Server Components load the initial board inside the Suspense boundary. An authenticated GET Route Handler at `/w/[workspaceSlug]/findings/more` serves bounded additional pages with `Cache-Control: private, no-store`; it accepts the board filters plus single `column`, `cursor`, and `scope` parameters. Unknown or repeated filters and invalid pagination parameters require a board reset. The client also disables fetch caching. Status mutations remain Server Actions. Reset loaded pages after successful status updates or refreshed server data. Revalidate the canonical workspace board after finding and service mutations, and the Services listing after service mutations; existing group/access layout invalidation also covers both.
+
+Workspace preference writes use a separate authenticated POST Route Handler at `/w/[workspaceSlug]/preference`, with an Origin check against the configured application origin. The selector serializes writes and skips obsolete queued selections. These background cookie writes and GET pagination requests do not cause an incidental React Server Component refresh, so loaded pages survive unrelated preference updates. A deliberate refresh still replaces retained cards with current server data.
 
 ## Verification and delivery
 
 Integration tests use isolated PostgreSQL and cover role/group visibility, hidden counts, invalid filters/cursors, independent pagination, timestamp precision, changed-status anchors, access removal between pages, status lifecycle, preserved fields/references, stale versions, and archive/permission boundaries.
 
-Browser checks cover filters and URL state, Load more, status menus, member revocation, archived cards, stale status edits, keyboard controls, both themes, and mobile/desktop layout. Retain the authentication, credential-race, service, group, finding, and hook regressions. Run persistence and browser suites sequentially.
+Browser checks cover filters and URL state, Load more, status menus, member revocation, archived cards, stale status edits, keyboard controls, both themes, and layout above and below the 1280px breakpoint. Check stable pending geometry during delayed initial/filter requests and retained pagination after background workspace preference writes. Retain the authentication, credential-race, service, group, finding, and hook regressions. Run persistence and browser suites sequentially.
 
 Use independent design and implementation review before creating the PR. After publishing, obtain a fresh review of the published head, inspect checks and discussions, post the review outcome on GitHub, and provide the merge recommendation. Preserve the user's uncommitted working agreements and skills; they are not part of the board commit without permission.

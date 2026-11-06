@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { FormActions, FormLayout } from "@/components/layout";
 import { FilterGrid } from "@/components/layout/board";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,8 @@ export function FindingBoardFilters({
   groups: { id: string; name: string }[];
   services: { id: string; name: string }[];
 }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
   const [values, setValues] = useState<Record<string, string>>({
     group: filters.group ?? "",
     service: filters.service ?? "",
@@ -80,7 +83,19 @@ export function FindingBoardFilters({
     },
   ];
   return (
-    <FormLayout action={`/w/${slug}/findings`} method="get" tone="surface">
+    <FormLayout
+      action={`/w/${slug}`}
+      method="get"
+      tone="surface"
+      aria-busy={pending}
+      onSubmit={(event) => {
+        event.preventDefault();
+        const query = new URLSearchParams(values);
+        startTransition(() =>
+          router.push(`/w/${slug}?${query}`, { scroll: false }),
+        );
+      }}
+    >
       <FilterGrid>
         {fields.map((field) => (
           <FormField
@@ -104,8 +119,26 @@ export function FindingBoardFilters({
         ))}
       </FilterGrid>
       <FormActions>
-        <Button type="submit">Apply filters</Button>
-        <TextLink href={`/w/${slug}/findings`}>Clear filters</TextLink>
+        <Button type="submit" disabled={pending}>
+          {pending ? "Applying filters…" : "Apply filters"}
+        </Button>
+        <TextLink
+          href={`/w/${slug}`}
+          scroll={false}
+          onClick={(event) => {
+            if (
+              event.metaKey ||
+              event.ctrlKey ||
+              event.shiftKey ||
+              event.altKey
+            )
+              return;
+            event.preventDefault();
+            startTransition(() => router.push(`/w/${slug}`, { scroll: false }));
+          }}
+        >
+          Clear filters
+        </TextLink>
       </FormActions>
     </FormLayout>
   );

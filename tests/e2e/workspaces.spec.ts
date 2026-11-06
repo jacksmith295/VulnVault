@@ -31,7 +31,8 @@ test("workspace creation, persistent selector, default navigation, and independe
     await page.goto("/dashboard");
     await expect(page).toHaveURL(`${origin}/dashboard`);
     await createWorkspace(page, "Solo Projects", first);
-    await expect(page.getByText("Your role: owner", { exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Services", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Groups", exact: true })).toBeVisible();
     await expect(page.getByRole("banner")).toBeVisible();
     let selector = await openSelector(page);
     await page.keyboard.press("ArrowDown");

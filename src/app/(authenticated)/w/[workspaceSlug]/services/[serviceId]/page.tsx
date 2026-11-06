@@ -22,7 +22,7 @@ export default async function ServicePage({
         title={service.name}
         back={
           <TextLink
-            href={`/w/${workspace.slug}${archived ? "?status=archived" : ""}`}
+            href={`/w/${workspace.slug}/services${archived ? "?status=archived" : ""}`}
           >
             Back to services
           </TextLink>

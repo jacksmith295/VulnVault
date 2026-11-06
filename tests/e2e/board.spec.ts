@@ -31,7 +31,7 @@ async function workspaceFixture(page: Page, pool: Pool) {
     primary,
     secondary,
     archived,
-    path: `/w/${slug}/findings`,
+    path: `/w/${slug}`,
   };
 }
 
@@ -134,7 +134,12 @@ test("board loads bounded columns, filters by URL, changes status and adapts to 
     }
     await finding(pool, fixture.archived, "Archived finding");
     await page.goto(`/w/${fixture.slug}`);
-    await page.getByRole("link", { name: "Findings", exact: true }).click();
+    await expect(
+      page.getByRole("link", { name: "Services", exact: true }),
+    ).toHaveAttribute("href", `/w/${fixture.slug}/services`);
+    await expect(
+      page.getByRole("link", { name: "Groups", exact: true }),
+    ).toBeVisible();
     await expect(page).toHaveURL(`${origin}${fixture.path}`);
     await expect(
       column(page, "New").getByRole("heading", {
@@ -208,6 +213,22 @@ test("board loads bounded columns, filters by URL, changes status and adapts to 
       { id: referenceId, url: "https://advisories.example.com/payment" },
     ]);
 
+    // Desktop panels other than the selected mobile tab must remain interactive.
+    await changeStatus(page, "resolved finding", "Triaged");
+    await expect(
+      column(page, "Triaged").getByRole("link", {
+        name: "resolved finding",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await changeStatus(page, "resolved finding", "Resolved");
+    await expect(
+      column(page, "Resolved").getByRole("link", {
+        name: "resolved finding",
+        exact: true,
+      }),
+    ).toBeVisible();
+
     await selectFilter(page, "Service", "Public API");
     await applyFilters(page);
     await expect(page).toHaveURL(
@@ -249,6 +270,41 @@ test("board loads bounded columns, filters by URL, changes status and adapts to 
     await page
       .getByRole("link", { name: "Clear filters", exact: true })
       .click();
+    await expect(
+      column(page, "New").getByRole("heading", {
+        name: "New (21)",
+        exact: true,
+      }),
+    ).toBeVisible();
+    for (const viewport of [
+      { width: 2560, height: 1440 },
+      { width: 1440, height: 900 },
+    ]) {
+      await page.setViewportSize(viewport);
+      const geometry = await page
+        .getByTestId("finding-board")
+        .evaluate((element) => ({
+          width: element.clientWidth,
+          scrollWidth: element.scrollWidth,
+        }));
+      expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.width);
+      for (const status of [
+        "New",
+        "Triaged",
+        "In progress",
+        "Resolved",
+        "Rejected",
+        "Accepted risk",
+      ]) {
+        const rectangle = await column(page, status).boundingBox();
+        expect(rectangle).not.toBeNull();
+        expect(rectangle!.x).toBeGreaterThanOrEqual(0);
+        expect(rectangle!.x + rectangle!.width).toBeLessThanOrEqual(
+          viewport.width,
+        );
+      }
+    }
+    await page.setViewportSize({ width: 2560, height: 1440 });
     await chooseTheme(page, "Light");
     await page.screenshot({
       path: test.info().outputPath("board-desktop-light.png"),
@@ -259,6 +315,7 @@ test("board loads bounded columns, filters by URL, changes status and adapts to 
         () => document.documentElement.scrollWidth <= window.innerWidth,
       ),
     ).toBe(true);
+    await page.setViewportSize({ width: 1440, height: 900 });
     await chooseTheme(page, "Dark");
     await page.screenshot({
       path: test.info().outputPath("board-desktop-dark.png"),
@@ -455,6 +512,11 @@ test("board rejects stale status edits and keeps archived cards read-only", asyn
   const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
   const fixture = await workspaceFixture(page, pool);
   const staleTab = await context.newPage();
+  let releasePreference!: () => void;
+  const preferenceGate = new Promise<void>((resolve) => {
+    releasePreference = resolve;
+  });
+  let preferenceHeld = false;
   try {
     const id = await finding(pool, fixture.primary, "Stale finding");
     for (let number = 1; number <= 21; number++) {
@@ -480,13 +542,27 @@ test("board rejects stale status edits and keeps archived cards read-only", asyn
         exact: true,
       }),
     ).toBeDisabled();
+    await staleTab.route(`**/w/${fixture.slug}/preference`, async (route) => {
+      preferenceHeld = true;
+      await preferenceGate;
+      await route.continue();
+    });
     await staleTab.goto(`${origin}${fixture.path}`);
+    await expect.poll(() => preferenceHeld).toBe(true);
     await expect(
       staleTab.getByRole("link", { name: "Stale finding", exact: true }),
     ).toHaveCount(0);
     await staleTab
       .getByRole("button", { name: "Load more New findings", exact: true })
       .click();
+    await expect(
+      staleTab.getByRole("link", { name: "Stale finding", exact: true }),
+    ).toBeVisible();
+    const preferenceResponse = staleTab.waitForResponse((response) =>
+      response.url().endsWith(`/w/${fixture.slug}/preference`),
+    );
+    releasePreference();
+    expect((await preferenceResponse).status()).toBe(204);
     await expect(
       staleTab.getByRole("link", { name: "Stale finding", exact: true }),
     ).toBeVisible();
@@ -523,7 +599,113 @@ test("board rejects stale status edits and keeps archived cards read-only", asyn
       }),
     ).toBeVisible();
   } finally {
+    releasePreference();
     await staleTab.close();
+    await cleanup(pool, fixture, [owner.id]);
+  }
+});
+
+test("workspace home streams a stable board skeleton while filters load", async ({
+  page,
+  context,
+}) => {
+  const owner = await verifiedAccount(context);
+  const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+  const fixture = await workspaceFixture(page, pool);
+  const blocker = await pool.connect();
+  try {
+    await finding(pool, fixture.primary, "Critical work", "new", 1, "critical");
+    await finding(pool, fixture.secondary, "High work");
+    await page.setViewportSize({ width: 2560, height: 1440 });
+    await page.goto(fixture.path);
+    await expect(
+      page.getByRole("heading", { name: "Board workspace", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Critical work", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Services", exact: true }),
+    ).toHaveAttribute("href", `/w/${fixture.slug}/services`);
+    const board = page.locator('[data-testid="finding-board"]:visible');
+    const before = await board.boundingBox();
+    expect(before).not.toBeNull();
+    await page.evaluate(() => {
+      (
+        window as Window & { boardNavigationMarker?: string }
+      ).boardNavigationMarker = "same-document";
+    });
+    await selectFilter(page, "Severity", "Critical");
+    // Hold the real query, allowing the server Suspense fallback to stream first.
+    await blocker.query("BEGIN");
+    await blocker.query(
+      "SET LOCAL idle_in_transaction_session_timeout = '20s'",
+    );
+    await blocker.query("LOCK TABLE finding IN ACCESS EXCLUSIVE MODE");
+    await applyFilters(page);
+    await expect(
+      page.getByRole("status", { name: "Loading findings", exact: true }),
+    ).toBeVisible();
+    const pending = await board.boundingBox();
+    expect(pending).not.toBeNull();
+    expect(Math.abs(pending!.y - before!.y)).toBeLessThanOrEqual(2);
+    expect(Math.abs(pending!.height - before!.height)).toBeLessThanOrEqual(2);
+    expect(Math.abs(pending!.width - before!.width)).toBeLessThanOrEqual(1);
+    await page.screenshot({
+      path: test.info().outputPath("board-loading-2560.png"),
+      fullPage: true,
+    });
+    await blocker.query("COMMIT");
+    await expect(
+      page.getByRole("status", { name: "Loading findings", exact: true }),
+    ).not.toBeVisible();
+    await expect(page).toHaveURL(/severity=critical/u);
+    await expect(
+      page.getByRole("link", { name: "Critical work", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "High work", exact: true }),
+    ).toHaveCount(0);
+    const after = await board.boundingBox();
+    expect(after).not.toBeNull();
+    expect(Math.abs(after!.y - before!.y)).toBeLessThanOrEqual(2);
+    expect(Math.abs(after!.height - before!.height)).toBeLessThanOrEqual(2);
+    expect(
+      await page.evaluate(
+        () =>
+          (window as Window & { boardNavigationMarker?: string })
+            .boardNavigationMarker,
+      ),
+    ).toBe("same-document");
+
+    await page.getByRole("link", { name: "Services", exact: true }).click();
+    await expect(page).toHaveURL(`${origin}/w/${fixture.slug}/services`);
+    await expect(
+      page.getByRole("link", { name: "Payments API", exact: true }),
+    ).toBeVisible();
+    await page.getByRole("link", { name: "Board", exact: true }).click();
+    await expect(page).toHaveURL(`${origin}${fixture.path}`);
+    await page.goto(`/w/${fixture.slug}/findings?severity=critical`);
+    await expect(page).toHaveURL(`${origin}${fixture.path}?severity=critical`);
+    await expect(
+      page.getByRole("link", { name: "Critical work", exact: true }),
+    ).toBeVisible();
+    await page.goto(`/w/${fixture.slug}/findings?severity=high&severity=low`);
+    await expect(page).toHaveURL(
+      `${origin}${fixture.path}?severity=high&severity=low`,
+    );
+    await expect(
+      page.getByText(
+        "Some filters are invalid or unavailable. Clear the filters and try again.",
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "High work", exact: true }),
+    ).toHaveCount(0);
+  } finally {
+    await blocker.query("ROLLBACK");
+    blocker.release();
     await cleanup(pool, fixture, [owner.id]);
   }
 });

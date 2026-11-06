@@ -22,7 +22,7 @@ export async function saveServiceAction(
   if (result.error !== undefined)
     return { error: result.error, conflict: result.conflict };
   revalidatePath(`/w/${slug}`);
-  revalidatePath(`/w/${slug}/findings`);
+  revalidatePath(`/w/${slug}/services`);
   revalidatePath(`/w/${slug}/services/${result.service.id}`);
   redirect(`/w/${slug}/services/${result.service.id}`);
 }
@@ -48,7 +48,7 @@ export async function archiveServiceAction(
   if (result.error !== undefined)
     return { error: result.error, conflict: result.conflict };
   revalidatePath(`/w/${slug}`);
-  revalidatePath(`/w/${slug}/findings`);
+  revalidatePath(`/w/${slug}/services`);
   revalidatePath(`/w/${slug}/services/${id}`);
   redirect(`/w/${slug}/services/${id}`);
 }

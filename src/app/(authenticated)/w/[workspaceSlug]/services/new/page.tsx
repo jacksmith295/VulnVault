@@ -15,7 +15,9 @@ export default async function NewServicePage({
       <PageHeader
         title="Create service"
         back={
-          <TextLink href={`/w/${workspace.slug}`}>Back to services</TextLink>
+          <TextLink href={`/w/${workspace.slug}/services`}>
+            Back to services
+          </TextLink>
         }
       />
       <ServiceForm slug={workspace.slug} />

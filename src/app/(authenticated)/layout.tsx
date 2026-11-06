@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { AppShell } from "@/components/layout";
 
 import { SessionMonitor } from "@/features/auth/components/SessionMonitor";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -15,10 +16,10 @@ export default async function AuthenticatedLayout({
   await requireSession();
   const workspaces = await listWorkspaces();
   return (
-    <>
+    <AppShell>
       <SessionMonitor />
       <AppHeader workspaces={workspaces} />
       {children}
-    </>
+    </AppShell>
   );
 }

@@ -1,27 +1,46 @@
 import { randomUUID } from "node:crypto";
-import { expect, type APIRequestContext, type BrowserContext, type Page } from "@playwright/test";
+import {
+  expect,
+  type APIRequestContext,
+  type BrowserContext,
+  type Page,
+} from "@playwright/test";
 
 const inbox = "http://127.0.0.1:8025";
 
-export async function emailLink(request: APIRequestContext, recipient: string, subject: string) {
+export async function emailLink(
+  request: APIRequestContext,
+  recipient: string,
+  subject: string,
+) {
   let messageId = "";
-  await expect.poll(async () => {
-    const response = await request.get(`${inbox}/api/v1/search`, {
-      params: { query: `to:${recipient}` },
-    });
-    expect(response.ok()).toBeTruthy();
-    const data = await response.json();
-    const message = data.messages.find((entry: { ID: string; Subject: string }) =>
-      entry.Subject.toLowerCase().includes(subject));
-    messageId = message?.ID ?? "";
-    return !!messageId;
-  }, { timeout: 15_000 }).toBe(true);
+  await expect
+    .poll(
+      async () => {
+        const response = await request.get(`${inbox}/api/v1/search`, {
+          params: { query: `to:${recipient}` },
+        });
+        expect(response.ok()).toBeTruthy();
+        const data = await response.json();
+        const message = data.messages.find(
+          (entry: { ID: string; Subject: string }) =>
+            entry.Subject.toLowerCase().includes(subject),
+        );
+        messageId = message?.ID ?? "";
+        return !!messageId;
+      },
+      { timeout: 15_000 },
+    )
+    .toBe(true);
 
   const response = await request.get(`${inbox}/api/v1/message/${messageId}`);
   expect(response.ok()).toBeTruthy();
   const message = await response.json();
   const link = message.Text.match(/https?:\/\/[^\s<>]+/u)?.[0];
-  if (!link) throw new Error("Expected an authentication link in the development email.");
+  if (!link)
+    throw new Error(
+      "Expected an authentication link in the development email.",
+    );
   expect(new URL(link).origin).toBe("http://127.0.0.1:3100");
   return link as string;
 }
@@ -33,17 +52,67 @@ export async function login(page: Page, email: string, password: string) {
   await page.getByRole("button", { name: "Login", exact: true }).click();
 }
 
-export async function chooseTheme(page: Page, theme: "Light" | "Dark" | "System") {
+export async function chooseTheme(
+  page: Page,
+  theme: "Light" | "Dark" | "System",
+) {
   await page.getByRole("button", { name: "Theme", exact: true }).click();
   await page.getByRole("menuitemradio", { name: theme, exact: true }).click();
   await expect(page.getByRole("menu")).not.toBeVisible();
-  if (theme !== "System") await expect(page.locator("html")).toHaveClass(new RegExp(`\\b${theme.toLowerCase()}\\b`, "u"));
+  if (theme !== "System")
+    await expect(page.locator("html")).toHaveClass(
+      new RegExp(`\\b${theme.toLowerCase()}\\b`, "u"),
+    );
 }
 
 export const origin = "http://127.0.0.1:3100";
 
+export async function refreshServerProps(page: Page) {
+  const pathname = new URL(page.url()).pathname;
+  let resolvePayload!: (payload: string) => void;
+  const payloadPromise = new Promise<string>((resolve) => {
+    resolvePayload = resolve;
+  });
+  await page.route(
+    (url) => url.pathname === pathname,
+    async (route) => {
+      if (
+        route.request().method() !== "GET" ||
+        route.request().headers().rsc !== "1"
+      ) {
+        await route.continue();
+        return;
+      }
+      const response = await route.fetch();
+      expect(response.ok()).toBeTruthy();
+      const payload = await response.text();
+      await route.fulfill({ response });
+      resolvePayload(payload);
+    },
+    { times: 1 },
+  );
+  // Exercise the installed Next router without adding test controls to the app.
+  await page.evaluate(() => {
+    const next = (
+      window as Window & { next?: { router?: { refresh: () => void } } }
+    ).next;
+    if (!next?.router) throw new Error("Expected the Next application router.");
+    next.router.refresh();
+  });
+  const payload = await payloadPromise;
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
+  return payload;
+}
+
 export function clientHeaders() {
-  return { "x-forwarded-for": `198.18.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250) + 1}` };
+  return {
+    "x-forwarded-for": `198.18.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250) + 1}`,
+  };
 }
 
 export async function verifiedAccount(context: BrowserContext) {
@@ -53,13 +122,23 @@ export async function verifiedAccount(context: BrowserContext) {
     ...clientHeaders(),
     origin,
   });
-  const response = await context.request.post(`${origin}/api/auth/sign-up/email`, {
-    data: { name: "Workspace Developer", email, password, callbackURL: "/login?verified=true" },
-  });
+  const response = await context.request.post(
+    `${origin}/api/auth/sign-up/email`,
+    {
+      data: {
+        name: "Workspace Developer",
+        email,
+        password,
+        callbackURL: "/login?verified=true",
+      },
+    },
+  );
   expect(response.ok()).toBeTruthy();
   const { user } = await response.json();
   await context.request.get(await emailLink(context.request, email, "verify"));
-  const login = await context.request.post(`${origin}/api/auth/sign-in/email`, { data: { email, password } });
+  const login = await context.request.post(`${origin}/api/auth/sign-in/email`, {
+    data: { email, password },
+  });
   expect(login.ok()).toBeTruthy();
   return { id: user.id as string, email, password };
 }

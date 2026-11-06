@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import {
   Menu,
   MenuTrigger,
@@ -10,7 +10,6 @@ import {
   MenuSeparator,
 } from "@/components/ui/menu";
 import type { Workspace } from "../data";
-import { rememberWorkspaceAction } from "../actions";
 
 export function WorkspaceSelector({ workspaces }: { workspaces: Workspace[] }) {
   const pathname = usePathname();
@@ -22,13 +21,28 @@ export function WorkspaceSelector({ workspaces }: { workspaces: Workspace[] }) {
       pathname.startsWith(`/w/${workspace.slug}/`),
   );
   const slug = current?.slug;
+  const preferenceQueue = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
-    if (slug)
-      void rememberWorkspaceAction(slug).catch(() => {
-        /* Navigation remains usable if saving the preference fails. */
+    let canceled = false;
+    if (slug) {
+      // Complete earlier writes first so their cookies cannot replace a newer choice.
+      preferenceQueue.current = preferenceQueue.current.then(async () => {
+        if (canceled) return;
+        try {
+          await fetch(`/w/${slug}/preference`, {
+            method: "POST",
+            cache: "no-store",
+          });
+        } catch {
+          /* Navigation remains usable if saving the preference fails. */
+        }
       });
-  }, [pathname, slug]);
+    }
+    return () => {
+      canceled = true;
+    };
+  }, [slug]);
 
   return (
     <Menu key={route}>

@@ -11,12 +11,13 @@ import { FormMessage } from "@/components/ui/form-message";
 import { TextLink } from "@/components/ui/link";
 import { Menu, MenuItem, MenuPopup, MenuTrigger } from "@/components/ui/menu";
 import { Text } from "@/components/ui/typography";
-import type { BoardFinding, getFindingBoard } from "../board-data";
+import type {
+  BoardFinding,
+  MoreBoardFindings,
+  getFindingBoard,
+} from "../board-data";
 import type { BoardFilters, FindingStatus } from "../board-validation";
-import {
-  changeBoardFindingStatusAction,
-  loadMoreBoardFindingsAction,
-} from "../board-actions";
+import { changeBoardFindingStatusAction } from "../board-actions";
 import { statuses, statusLabels } from "../validation";
 import { FindingBadges } from "./FindingBadges";
 
@@ -38,7 +39,7 @@ export function FindingBoard({
   // Server refreshes replace loaded pages, while action feedback survives the response.
   const [feedback, setFeedback] = useState<StatusFeedback>();
   return (
-    <Stack>
+    <Stack grow>
       {feedback && <FormMessage>{feedback.error}</FormMessage>}
       {feedback?.conflict && (
         <Button
@@ -164,13 +165,17 @@ function FindingBoardCollection({
     requests.current.add(status);
     setLoading((previous) => ({ ...previous, [status]: true }));
     try {
-      const result = await loadMoreBoardFindingsAction(
-        slug,
-        filters,
-        status,
+      const query = new URLSearchParams({
+        ...filters,
+        column: status,
         cursor,
-        scopeKey,
-      );
+        scope: scopeKey,
+      });
+      const response = await fetch(`/w/${slug}/findings/more?${query}`, {
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error("Could not load findings");
+      const result = (await response.json()) as MoreBoardFindings;
       if (!active.current) return;
       if (result.reset) {
         active.current = false;

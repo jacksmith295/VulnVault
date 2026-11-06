@@ -2,17 +2,26 @@ import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Heading, Text } from "@/components/ui/typography";
 import { ThemeSelector } from "@/components/theme/ThemeSelector";
-const widths = { default: "max-w-4xl", narrow: "max-w-xl", wide: "max-w-6xl" };
+const widths = {
+  default: "max-w-none",
+  narrow: "max-w-xl",
+  wide: "max-w-none",
+};
 export function Page({
   width = "default",
+  layout = "default",
   className,
   ...props
-}: ComponentProps<"main"> & { width?: keyof typeof widths }) {
+}: ComponentProps<"main"> & {
+  width?: keyof typeof widths;
+  layout?: "default" | "board";
+}) {
   return (
     <main
       className={cn(
         "mx-auto flex w-full min-w-0 flex-col gap-8 px-4 py-8 sm:px-6 sm:py-12",
         widths[width],
+        layout === "board" && "flex-1 gap-6 py-6 sm:py-6",
         className,
       )}
       {...props}
@@ -33,7 +42,7 @@ export function PageHeader({
   return (
     <header className="flex min-w-0 flex-col gap-4">
       {back}
-      <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:flex-wrap">
         <div className="min-w-0 flex-1 space-y-2">
           <Heading level={1}>{title}</Heading>
           {description && <Text tone="muted">{description}</Text>}
@@ -47,13 +56,15 @@ export function PageHeader({
 }
 export function Stack({
   gap = "default",
+  grow = false,
   className,
   ...props
-}: ComponentProps<"div"> & { gap?: "sm" | "default" | "lg" }) {
+}: ComponentProps<"div"> & { gap?: "sm" | "default" | "lg"; grow?: boolean }) {
   return (
     <div
       className={cn(
         "flex min-w-0 flex-col",
+        grow && "flex-1",
         gap === "sm" ? "gap-2" : gap === "lg" ? "gap-8" : "gap-4",
         className,
       )}
@@ -223,4 +234,8 @@ export function TabNav({ children }: { children: ReactNode }) {
       {children}
     </nav>
   );
+}
+
+export function AppShell({ children }: { children: ReactNode }) {
+  return <div className="flex min-h-dvh flex-col">{children}</div>;
 }

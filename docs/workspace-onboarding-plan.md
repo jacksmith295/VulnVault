@@ -8,15 +8,17 @@ Status: merged in PR 2. Includes the persistent workspace selector and default w
 - `/workspaces/new` asks for a display name and URL slug. Suggest a slug from the name and let the user edit it before creation. Names may repeat; slugs must be unique across the installation.
 - Proposed validation: trimmed display name of 2 to 100 characters; slug of 3 to 63 lowercase ASCII letters/digits separated by single hyphens, with no leading/trailing hyphen. Show a useful collision error without discarding the form.
 - Creation makes the signed-in user the owner and opens `/w/[workspaceSlug]`.
-- Use a persistent header with the workspace dropdown in the top left. It lists memberships, indicates the current workspace, and has Create workspace + and All workspaces links at the bottom. The workspace page shows its name, the user's role, and an honest empty state for services. Include logout.
+- Use a persistent header with the workspace dropdown in the top left. It lists memberships, indicates the current workspace, and has Create workspace + and All workspaces links at the bottom. The workspace home shows its name and findings board, with Services beside Groups for owners/admins. Services has a separate listing at `/w/[workspaceSlug]/services`, including active/archive tabs and an honest empty state. Include logout. See the [findings board plan](findings-board-plan.md) for the current workspace home.
 - Workspace selection is explicit navigation. The URL identifies the workspace for each tab; do not use session active-organisation state or browser storage as authority. Remember explicit selection and creation in a browser cookie as a navigation hint only; check current membership before using it. The preference must never override explicit URLs or grant access. A stale preference falls back safely. Direct workspace URLs remain independently usable in separate tabs.
-- Invitations, settings edits, deletion, ownership transfer, member management, and services follow in later slices. Do not show nonfunctional controls for them.
+- Invitations, settings edits, deletion, ownership transfer, and member management follow in later slices. Do not show nonfunctional controls for them.
 
 ## Server and data design
 
 Use the existing organisation and membership tables, exposed as workspaces in application code and UI. No new schema or migration is expected.
 
 Create a small workspace feature with shared validation schemas, server-only data access, a Server Action for creation, and focused UI components. Reads use Server Components. Continue to use the existing session monitor and verified-session helper.
+
+The selector saves its navigation hint through the authenticated POST endpoint `/w/[workspaceSlug]/preference`, which checks the configured application Origin and current workspace membership before writing the cookie. It serializes writes and skips obsolete queued selections so an earlier response cannot overwrite the latest selection in the same selector. Keeping this cookie write outside a Server Action avoids incidental React Server Component refreshes that would discard loaded board pages. Creation still saves the preference within its Server Action before redirecting to the workspace home.
 
 The installed Better Auth 1.7.16 organisation creation handler performs organisation and owner-member creation separately. `transaction: true` on its adapter supplies transaction support, but does not wrap the complete handler. The handler also changes session active-organisation state by default. These behaviours were checked in `node_modules/better-auth/dist/plugins/organization/routes/crud-org.mjs`.
 
