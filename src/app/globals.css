@@ -1,3 +1,5 @@
+@layer dnd-kit, theme, base, components, utilities;
+
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -5,6 +7,16 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --color-severity-critical: var(--severity-critical);
+  --color-severity-critical-subtle: var(--severity-critical-subtle);
+  --color-severity-high: var(--severity-high);
+  --color-severity-high-subtle: var(--severity-high-subtle);
+  --color-severity-medium: var(--severity-medium);
+  --color-severity-medium-subtle: var(--severity-medium-subtle);
+  --color-severity-low: var(--severity-low);
+  --color-severity-low-subtle: var(--severity-low-subtle);
+  --color-severity-informational: var(--severity-informational);
+  --color-severity-informational-subtle: var(--severity-informational-subtle);
   --animate-feedback: feedback var(--motion-duration-normal)
     var(--motion-ease-out);
 
@@ -80,6 +92,16 @@
   --accent-foreground: #205f39;
   --destructive: #b42335;
   --success: #21663e;
+  --severity-critical: #9f1239;
+  --severity-critical-subtle: #fff0f1;
+  --severity-high: #9a3412;
+  --severity-high-subtle: #fff1e8;
+  --severity-medium: #854d0e;
+  --severity-medium-subtle: #fff6d5;
+  --severity-low: #1e40af;
+  --severity-low-subtle: #eaf3ff;
+  --severity-informational: #475569;
+  --severity-informational-subtle: #eef2f4;
   --border: #c8d2cb;
   --input: #809486;
   --ring: #21663e;
@@ -115,6 +137,16 @@
   --accent-foreground: #a6e3ba;
   --destructive: #ff9da7;
   --success: #8ed5a6;
+  --severity-critical: #ffb3c0;
+  --severity-critical-subtle: #48212c;
+  --severity-high: #ffc08a;
+  --severity-high-subtle: #442b1b;
+  --severity-medium: #f6d678;
+  --severity-medium-subtle: #3a3219;
+  --severity-low: #a8ccff;
+  --severity-low-subtle: #20334b;
+  --severity-informational: #bcc8cc;
+  --severity-informational-subtle: #2a3235;
   --border: #405247;
   --input: #728a79;
   --ring: #8ed5a6;

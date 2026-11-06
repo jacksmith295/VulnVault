@@ -125,6 +125,8 @@ The green theme supports Light, Dark, and System from the theme menu on both pub
 
 The UI targets WCAG 2.2 AA with contrast-aware controls, visible keyboard focus, skip navigation, and themed error pages. See the [accessibility review](docs/accessibility-review.md) for findings, regression coverage, and manual verification limits.
 
+Findings use distinct severity colours in both themes. The board supports status moves through drag handles or the existing menus, including keyboard operation and mobile drop targets. See the [board interactions plan](docs/board-interactions-plan.md) for behaviour and verification scope.
+
 ## Delivery
 
 Work on feature branches, with implementation and independent review agents. PRs include behaviour changes and validation evidence and remain for the user's approval before merging. Public deployment is outside the current scope.
