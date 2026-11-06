@@ -1,0 +1,27 @@
+# Only application build inputs enter the context. Local configuration, keys,
+# Git history, databases, and generated artifacts remain on the host.
+**
+!package.json
+!package-lock.json
+!next.config.ts
+!next-env.d.ts
+!tsconfig.json
+!postcss.config.mjs
+!src/
+!src/**
+!public/
+!public/**
+!scripts/
+!scripts/install-hooks.mjs
+
+# Keep secrets excluded even if someone places them inside an allowed directory.
+**/.env*
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/id_rsa*
+**/id_ed25519*
+**/node_modules
+**/.next
+**/.git

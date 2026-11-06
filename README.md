@@ -40,6 +40,10 @@ Authentication ignores caller-supplied forwarded IP headers and shares rate-limi
 
 Compose exposes PostgreSQL at `localhost:5432`, SMTP at `127.0.0.1:1025`, and the inbox at `127.0.0.1:8025`. Its credentials are development-only. PostgreSQL data persists in the `vulnvault_postgres_data` volume. Stop infrastructure with `docker compose stop`; do not remove its volume unless you intend to erase development data.
 
+## PC-local hosting and phone access
+
+Optional Docker overlays run a production build on your PC for trusted Wi-Fi HTTP access or private Tailscale HTTPS access. They reuse the existing local database and Mailpit when the same Compose project is selected. These modes are alternatives, and the PC must stay awake and online. See [the local hosting guide](docs/local-hosting.md) for setup, project and credential safeguards, access policies, and stopping or switching modes. Normal development continues to use Next.js on the host. Container GitHub sync is disabled; scheduled polling remains a host process.
+
 ## Verification
 
 Start the separate, disposable test database from the repository root:

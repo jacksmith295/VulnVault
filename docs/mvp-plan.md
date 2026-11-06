@@ -4,7 +4,7 @@
 
 Build a useful vulnerability tracker for the owner's real projects, while learning AI-assisted engineering. Keep delivery in small, reviewed slices. This roadmap records current capabilities and priorities; detailed behaviour belongs in the linked feature plans. Agree on each feature's design and acceptance criteria before implementation.
 
-The initial product is self-hosted locally: Next.js on the host, PostgreSQL and development email through Docker Compose. Workspaces own services, findings, and integrations for solo developers and teams. Registration grants no workspace access. Authentication remains independent of repository providers. Public deployment and cloud infrastructure remain deferred.
+The initial product is self-hosted locally: Next.js on the host for development, PostgreSQL and development email through Docker Compose. Optional [PC-local Docker hosting](local-hosting.md) supports phone access through trusted Wi-Fi or private Tailscale, with the PC remaining awake and online. Workspaces own services, findings, and integrations for solo developers and teams. Registration grants no workspace access. Authentication remains independent of repository providers. Public deployment and cloud infrastructure remain deferred.
 
 ## Current merged capabilities
 
@@ -18,29 +18,21 @@ The initial product is self-hosted locally: Next.js on the host, PostgreSQL and 
 | [Workspace board](findings-board-plan.md), [interactions](board-interactions-plan.md), and [responsive UI](responsive-ui-plan.md) | Authorised filters, bounded columns with Load more, status menus and dragging, mobile status tabs, and responsive filters. [Shared UI and themes](ui-foundation-plan.md) support light/dark/system preferences. |
 | [Dependabot ingestion](dependabot-ingestion-plan.md) | Operator-bound GitHub App installations, workspace repository mappings, local polling and Sync now, recoverable sync status, deduplication, and retained provenance. Real alerts have been imported. Upstream state refreshes independently of local triage and edits. |
 
-Last reviewed on 2026-11-06 against `d8c2fa7`. Lint, TypeScript, production build, automated tests, hook regressions, and browser checks passed at that baseline. The review also identified the work below; passing existing checks does not cover these gaps.
+Reliability fixes from PR #16 are merged: continuous polling recovers from unexpected database failures, configured-App mappings cannot be starved by old mappings, mobile status selection and valid drafts survive refreshes, and integration toggle failures return recoverable feedback. Worker, PostgreSQL, and browser regressions cover these outcomes alongside existing permission, concurrency, and data-preservation checks.
+
+## Implemented, awaiting merge
+
+Optional [phone access from the local PC](local-hosting.md) is implemented on the consolidation branch, awaiting review, verification, and merge. It provides alternative trusted Wi-Fi HTTP and private Tailscale HTTPS modes, reuses existing Compose data, and keeps the inbox local to the PC. Container GitHub sync remains disabled; polling uses the host worker. Public hosting and cloud deployment remain deferred.
 
 ## Next delivery slices
 
-### 1. Reliability fixes
-
-Implemented on the reliability branch; awaiting merge. After this slice is merged, start slice 2 with a minimal CI verification PR.
-
-- Continuous polling retries unexpected database failures with safe feedback; `--once` still drains successful jobs and exits nonzero on failure.
-- Candidate selection filters by the configured App ID before the ten-row limit, so previous-App mappings cannot starve eligible work.
-- Mobile status selection survives successful and failed mutation refreshes while the paginated collection still resets.
-- Integration toggle transaction and commit failures roll back and return recoverable form feedback.
-- Repository selections clear when removed from available options, while valid drafts survive unrelated refreshes.
-
-Worker, PostgreSQL, and browser regressions cover these outcomes alongside existing permission, concurrency, and data-preservation checks. Verification results belong in the PR.
-
-### 2. Repeatable verification and safe diagnostics
+### 1. Repeatable verification and safe diagnostics
 
 Add minimal CI for lint, TypeScript, hook regressions, automated tests, production build, and browser checks. Use isolated PostgreSQL and Mailpit; run persistence and browser suites sequentially. Follow the [verification setup](../README.md#verification).
 
 Improve diagnostics with safe operation and error categories, keeping raw sensitive errors, credentials, and vulnerability evidence out of logs and form feedback. Triage dependency advisories by affected path and practical exposure, with scoped upgrades and relevant regressions. Avoid forced authentication dependency upgrades that bypass the [hardening checks](auth-hardening.md). Separate a quick unit-test setup from database setup when that improves the development loop.
 
-### 3. Real-project trial and local recovery
+### 2. Real-project trial and local recovery
 
 Use the owner's projects to validate import, triage, remediation, and recovery before expanding integrations. Practise local backup/restore and an upgrade with existing data, including application/worker restart and polling recovery. Document repeatable steps and remaining gaps.
 
@@ -48,7 +40,7 @@ The solo MVP is useful when the owner can import relevant alerts, triage them, f
 
 Use this trial to agree on completion and discover the next usability needs.
 
-### 4. Triage usability design
+### 3. Triage usability design
 
 Design imported-finding search across title, package, GHSA, and CVE, plus source and upstream-state filters. Make service finding lists compact and bounded; they currently load all rows. Agree on explicit reconciliation behaviour before adding actions that apply upstream changes locally. Preserve the separation between upstream facts and local decisions.
 
