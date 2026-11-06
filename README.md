@@ -74,7 +74,44 @@ npm run db:migrate
 
 Review generated SQL before applying it. Changes that could discard data need an explicit migration plan. Schema generation and applying migrations are separate operations; starting the app does not silently rewrite the database.
 
-The original `0000` migration and scaffold `users` table are preserved. The additive `0001` migration creates Better Auth's tables, `0002` adds services and their repository associations, `0003` adds findings and their references, and `0004` adds service access groups and provisions Everyone for existing workspaces. Existing scaffold rows remain intact but do not automatically become login accounts; their password format and verification state have not been established. Register through the application for the new authentication flow.
+The original `0000` migration and scaffold `users` table are preserved. The additive `0001` migration creates Better Auth's tables, `0002` adds services and their repository associations, `0003` adds findings and their references, `0004` adds service access groups and provisions Everyone for existing workspaces, and `0005` adds workspace integrations, repository sync mappings, and retained finding sources with additive ownership indexes. Existing scaffold rows remain intact but do not automatically become login accounts; their password format and verification state have not been established. Register through the application for the new authentication flow.
+
+## GitHub Dependabot integration
+
+A dedicated GitHub App imports dependency alerts into existing services. It does not scan source code or replace GitHub's dependency analysis. Enable Dependabot alerts in each GitHub repository first.
+
+The self-hosting operator registers the App with **Dependabot alerts: read** and the default **Metadata: read**, disables webhooks and user authorization, and installs it on selected repositories. No public callback URL is needed. Keep the downloaded RSA private key outside this repository and restrict its file permissions, for example `chmod 600 ~/.config/vulnvault/github-app.pem`. Add the numeric `GITHUB_APP_ID` and absolute `GITHUB_APP_PRIVATE_KEY_FILE` path to `.env.local`; never paste the key into chat or commit it. These settings are optional until integrations are used. Restart long-running application/worker processes after changing them.
+
+After applying migrations, bind the intended installation to a workspace through the trusted host command:
+
+```sh
+npm run db:migrate
+npm run github:connect -- --workspace <workspace-slug> --repository <owner/repository>
+```
+
+The command authenticates as the App, validates installation/repository access, and connects matching existing service repository URLs only in that workspace. Review the reported mapping count before importing. An installation cannot silently move to another workspace. Reconnecting the same account preserves the connection identity and existing findings.
+
+Owners/admins can open **Integrations** from workspace home to connect other existing repository links, disable a connection or repository, and use **Sync now**. Sync now runs immediately without a worker, but cannot bypass an active sync or retry delay. Other workspace roles cannot administer integrations. Imported finding provenance follows the existing service/group permissions.
+
+For scheduled local polling, run this alongside Next.js:
+
+```sh
+npm run integrations:worker
+```
+
+The worker checks due repositories every ten seconds and schedules successful syncs fifteen minutes apart. For a bounded run scoped to one workspace:
+
+```sh
+npm run integrations:worker -- --once --workspace <workspace-slug>
+```
+
+One-shot failures return a nonzero exit status. Normal worker failures use a bounded delay; repository retry/backoff is persisted. Stop the worker with Ctrl-C. Repository status and safe failure messages are visible in Integrations; refresh the page to see background changes. Loaded boards refresh through normal navigation or reload; live push updates are outside this slice.
+
+Only previously unseen **open** alerts create New findings. Later syncs refresh separate upstream metadata for open/fixed/dismissed/automatically dismissed alerts and preserve every locally editable field. They never automatically resolve, reopen, reject, delete, or overwrite findings. A missing alert or failed page does not imply remediation. Removing a service repository link stops its imports but retains its findings and source history; reconnecting does not duplicate alerts.
+
+Requests use fixed GitHub API destinations, short-lived repository-scoped tokens, a sixty-second operation deadline, ten-second request deadlines, at most twenty pages, 2 MiB per response, and 16 MiB total. Larger repositories fail visibly without a partial import. Unavailable access, missing permission, and disabled Dependabot alerts can share a safe error category. Rate limits and transient failures retain retry times. Private keys, tokens, and raw API responses are never displayed or logged.
+
+See the [ingestion plan](docs/dependabot-ingestion-plan.md) for ownership, migration, concurrency, and verification details. GitLab/Bitbucket, webhooks, public CVE matching, automatic upstream/local status reconciliation, and browser-based installation authorization remain later slices.
 
 ## UI and themes
 

@@ -12,11 +12,8 @@ export default async function FindingPage({
   }>;
 }) {
   const { workspaceSlug, serviceId, findingId } = await params;
-  const { workspace, service, finding, references } = await requireFinding(
-    workspaceSlug,
-    serviceId,
-    findingId,
-  );
+  const { workspace, service, finding, references, source } =
+    await requireFinding(workspaceSlug, serviceId, findingId);
   return (
     <Page width="readable">
       <PageHeader
@@ -33,6 +30,7 @@ export default async function FindingPage({
         serviceId={service.id}
         finding={finding}
         references={references}
+        source={source}
         archived={service.archivedAt !== null}
       />
     </Page>

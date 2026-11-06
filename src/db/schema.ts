@@ -241,6 +241,10 @@ export const serviceRepository = pgTable(
     url: text("url").notNull(),
   },
   (table) => [
+    uniqueIndex("service_repository_service_id_unique").on(
+      table.serviceId,
+      table.id,
+    ),
     uniqueIndex("service_repository_service_url_unique").on(
       table.serviceId,
       table.url,
@@ -272,6 +276,7 @@ export const finding = pgTable(
     }),
   },
   (table) => [
+    uniqueIndex("finding_service_id_unique").on(table.serviceId, table.id),
     index("finding_service_created_id_idx").on(
       table.serviceId,
       table.createdAt,
@@ -389,5 +394,138 @@ export const serviceAccessGroup = pgTable(
       foreignColumns: [service.workspaceId, service.id],
     }).onDelete("cascade"),
     check("service_access_custom_check", sql`NOT ${t.isDefault}`),
+  ],
+);
+
+// Stable operator grants and job mappings never own imported source identities.
+export const workspaceIntegration = pgTable(
+  "workspace_integration",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "restrict" }),
+    provider: text("provider").notNull().default("github"),
+    appId: text("app_id").notNull(),
+    installationId: text("installation_id").notNull(),
+    accountId: text("account_id").notNull(),
+    accountLogin: text("account_login").notNull(),
+    accountType: text("account_type").notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    version: integer("version").notNull().default(1),
+    blockedUntil: timestamp("blocked_until"),
+  },
+  (t) => [
+    uniqueIndex("integration_workspace_id_unique").on(t.workspaceId, t.id),
+    uniqueIndex("integration_installation_unique").on(
+      t.provider,
+      t.installationId,
+    ),
+    uniqueIndex("integration_workspace_account_unique").on(
+      t.workspaceId,
+      t.provider,
+      t.accountId,
+    ),
+    check("integration_provider_check", sql`${t.provider} = 'github'`),
+    check(
+      "integration_account_type_check",
+      sql`${t.accountType} IN ('User', 'Organization')`,
+    ),
+    check("integration_version_check", sql`${t.version} >= 1`),
+  ],
+);
+
+export const integrationRepository = pgTable(
+  "integration_repository",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id").notNull(),
+    integrationId: text("integration_id").notNull(),
+    serviceId: text("service_id").notNull(),
+    repositoryLinkId: text("repository_link_id").notNull(),
+    repositoryId: text("repository_id").notNull(),
+    fullName: text("full_name").notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    version: integer("version").notNull().default(1),
+    nextAttemptAt: timestamp("next_attempt_at").notNull().defaultNow(),
+    lastAttemptAt: timestamp("last_attempt_at"),
+    lastSuccessAt: timestamp("last_success_at"),
+    errorCode: text("error_code"),
+    failures: integer("failures").notNull().default(0),
+    leaseToken: text("lease_token"),
+    leaseExpiresAt: timestamp("lease_expires_at"),
+  },
+  (t) => [
+    uniqueIndex("integration_repository_link_unique").on(t.repositoryLinkId),
+    index("integration_repository_due_idx").on(t.nextAttemptAt),
+    foreignKey({
+      columns: [t.workspaceId, t.integrationId],
+      foreignColumns: [
+        workspaceIntegration.workspaceId,
+        workspaceIntegration.id,
+      ],
+    }).onDelete("restrict"),
+    foreignKey({
+      columns: [t.workspaceId, t.serviceId],
+      foreignColumns: [service.workspaceId, service.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      columns: [t.serviceId, t.repositoryLinkId],
+      foreignColumns: [serviceRepository.serviceId, serviceRepository.id],
+    }).onDelete("cascade"),
+    check("integration_repository_version_check", sql`${t.version} >= 1`),
+    check("integration_repository_failures_check", sql`${t.failures} >= 0`),
+    check(
+      "integration_repository_lease_check",
+      sql`(${t.leaseToken} IS NULL) = (${t.leaseExpiresAt} IS NULL)`,
+    ),
+  ],
+);
+
+export const findingSource = pgTable(
+  "finding_source",
+  {
+    findingId: text("finding_id").primaryKey(),
+    workspaceId: text("workspace_id").notNull(),
+    serviceId: text("service_id").notNull(),
+    kind: text("kind").notNull().default("github_dependabot"),
+    repositoryId: text("repository_id").notNull(),
+    alertNumber: integer("alert_number").notNull(),
+    state: text("state").notNull(),
+    upstreamCreatedAt: timestamp("upstream_created_at").notNull(),
+    upstreamUpdatedAt: timestamp("upstream_updated_at").notNull(),
+    packageName: text("package_name").notNull(),
+    ecosystem: text("ecosystem").notNull(),
+    manifestPath: text("manifest_path").notNull(),
+    ghsaId: text("ghsa_id").notNull(),
+    cveId: text("cve_id"),
+    vulnerableRange: text("vulnerable_range").notNull(),
+    patchedVersion: text("patched_version"),
+    summary: text("summary").notNull(),
+    severity: text("severity").notNull(),
+    url: text("url").notNull(),
+    lastSeenAt: timestamp("last_seen_at").notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("finding_source_identity_unique").on(
+      t.serviceId,
+      t.kind,
+      t.repositoryId,
+      t.alertNumber,
+    ),
+    foreignKey({
+      columns: [t.workspaceId, t.serviceId],
+      foreignColumns: [service.workspaceId, service.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      columns: [t.serviceId, t.findingId],
+      foreignColumns: [finding.serviceId, finding.id],
+    }).onDelete("cascade"),
+    check("finding_source_kind_check", sql`${t.kind} = 'github_dependabot'`),
+    check(
+      "finding_source_state_check",
+      sql`${t.state} IN ('open', 'fixed', 'dismissed', 'auto_dismissed')`,
+    ),
+    check("finding_source_number_check", sql`${t.alertNumber} > 0`),
   ],
 );
