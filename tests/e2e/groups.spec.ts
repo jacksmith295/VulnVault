@@ -2,7 +2,12 @@ import { test } from "./fixtures";
 import { randomUUID } from "node:crypto";
 import { expect, type Page } from "@playwright/test";
 import { Pool } from "pg";
-import { chooseTheme, origin, verifiedAccount } from "./helpers";
+import {
+  chooseTheme,
+  origin,
+  verifiedAccount,
+  refreshServerProps,
+} from "./helpers";
 
 async function createWorkspace(page: Page, slug: string) {
   await page.goto("/workspaces/new");
@@ -219,7 +224,7 @@ test("default access, custom groups, revocation and explicit fallback apply to s
     );
     const securityURL = await createGroup(page, workspacePath, "Security");
     await saveAccess(page, serviceURL, ["Payments"]);
-    await colleaguePage.goto(`${origin}${workspacePath}`);
+    await colleaguePage.goto(`${origin}${workspacePath}/services`);
     await expect(
       colleaguePage.getByRole("link", { name: "Payments API", exact: true }),
     ).toHaveCount(0);
@@ -249,7 +254,7 @@ test("default access, custom groups, revocation and explicit fallback apply to s
     await memberPage
       .getByRole("button", { name: "Save changes", exact: true })
       .click();
-    await expect(memberPage.getByRole("alert")).toBeVisible();
+    await expect(memberPage.getByRole("alert").filter({ hasText: "Finding unavailable" })).toBeVisible();
     expect(
       (
         await pool.query("SELECT description FROM finding WHERE id = $1", [
@@ -320,35 +325,12 @@ test("stale access and group forms preserve edits without overwriting permission
   const slug = `group-stale-${randomUUID()}`;
   const path = `/w/${slug}`;
   const staleTab = await context.newPage();
-  let releasePreference!: () => void;
-  const preferenceGate = new Promise<void>((resolve) => {
-    releasePreference = resolve;
-  });
-  let preferenceHeld = false;
-  let preferencePayload = "";
   try {
     await createWorkspace(page, slug);
     const serviceURL = await createService(page, path);
     const paymentsURL = await createGroup(page, path, "Payments");
     await createGroup(page, path, "Security");
-    // Refresh dirty access fields with a newer server version before submitting them.
-    await staleTab.route("**/*", async (route) => {
-      if (
-        !preferenceHeld &&
-        route.request().method() === "POST" &&
-        route.request().headers()["next-action"]
-      ) {
-        preferenceHeld = true;
-        await preferenceGate;
-        const response = await route.fetch();
-        preferencePayload = await response.text();
-        await route.fulfill({ response, body: preferencePayload });
-        return;
-      }
-      await route.continue();
-    });
     await staleTab.goto(`${serviceURL}/access`);
-    await expect.poll(() => preferenceHeld).toBe(true);
     await accessMode(staleTab, "Selected groups");
     await staleTab
       .getByRole("checkbox", { name: "Security", exact: true })
@@ -358,23 +340,9 @@ test("stale access and group forms preserve edits without overwriting permission
       staleTab.getByRole("checkbox", { name: "Security", exact: true }),
     ).toBeChecked();
     await saveAccess(page, serviceURL, ["Payments"]);
-    const preferenceResponse = staleTab.waitForResponse(
-      (response) =>
-        response.request().method() === "POST" &&
-        !!response.request().headers()["next-action"],
-    );
-    releasePreference();
-    const refresh = await preferenceResponse;
-    expect(refresh.ok()).toBeTruthy();
+    const refreshedPayload = await refreshServerProps(staleTab);
     const paymentsId = new URL(paymentsURL).pathname.split("/").at(-1);
-    expect(preferencePayload).toContain(`"selectedGroupIds":["${paymentsId}"]`);
-    await refresh.finished();
-    await staleTab.evaluate(
-      () =>
-        new Promise<void>((resolve) =>
-          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-        ),
-    );
+    expect(refreshedPayload).toContain(`"selectedGroupIds":["${paymentsId}"]`);
     await expect(
       staleTab.getByRole("checkbox", { name: "Security", exact: true }),
     ).toBeChecked();
@@ -432,7 +400,6 @@ test("stale access and group forms preserve edits without overwriting permission
       fullPage: true,
     });
   } finally {
-    releasePreference();
     await staleTab.close();
     await cleanup(pool, slug, [owner.id]);
   }

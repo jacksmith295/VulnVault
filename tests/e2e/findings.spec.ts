@@ -2,7 +2,12 @@ import { test } from "./fixtures";
 import { randomUUID } from "node:crypto";
 import { expect, type Page } from "@playwright/test";
 import { Pool } from "pg";
-import { chooseTheme, origin, verifiedAccount } from "./helpers";
+import {
+  chooseTheme,
+  origin,
+  verifiedAccount,
+  refreshServerProps,
+} from "./helpers";
 
 async function fixtures(pool: Pool, userId: string) {
   const workspaceId = randomUUID();
@@ -162,31 +167,8 @@ test("findings resolve independently per service, reopen, and preserve stale edi
     ).toMatchObject({ status: "new", resolved_at: null });
 
     const staleTab = await context.newPage();
-    let releasePreference!: () => void;
-    const preferenceGate = new Promise<void>((resolve) => {
-      releasePreference = resolve;
-    });
-    let preferenceHeld = false;
-    let preferencePayload = "";
     try {
-      // Deliver refreshed server props after the user has started editing an older version.
-      await staleTab.route("**/*", async (route) => {
-        if (
-          !preferenceHeld &&
-          route.request().method() === "POST" &&
-          route.request().headers()["next-action"]
-        ) {
-          preferenceHeld = true;
-          await preferenceGate;
-          const response = await route.fetch();
-          preferencePayload = await response.text();
-          await route.fulfill({ response, body: preferencePayload });
-          return;
-        }
-        await route.continue();
-      });
       await staleTab.goto(`${firstURL}/edit`);
-      await expect.poll(() => preferenceHeld).toBe(true);
       await staleTab
         .getByLabel("Description", { exact: true })
         .fill("Unsaved stale description");
@@ -199,22 +181,8 @@ test("findings resolve independently per service, reopen, and preserve stale edi
         .getByRole("button", { name: "Save changes", exact: true })
         .click();
       await expect(page).toHaveURL(firstURL);
-      const preferenceResponse = staleTab.waitForResponse(
-        (response) =>
-          response.request().method() === "POST" &&
-          !!response.request().headers()["next-action"],
-      );
-      releasePreference();
-      const refresh = await preferenceResponse;
-      expect(refresh.ok()).toBeTruthy();
-      expect(preferencePayload).toContain("Updated vulnerability");
-      await refresh.finished();
-      await staleTab.evaluate(
-        () =>
-          new Promise<void>((resolve) =>
-            requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-          ),
-      );
+      const refreshedPayload = await refreshServerProps(staleTab);
+      expect(refreshedPayload).toContain("Updated vulnerability");
       await expect(
         staleTab.getByLabel("Description", { exact: true }),
       ).toHaveValue("Unsaved stale description");
@@ -235,7 +203,6 @@ test("findings resolve independently per service, reopen, and preserve stale edi
         ).rows[0].resolved_at,
       ).toBeNull();
     } finally {
-      releasePreference();
       await staleTab.close();
     }
     await page.goto(fixture.path(fixture.serviceIds[0]));

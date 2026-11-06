@@ -33,7 +33,10 @@ export function Select<Value extends string>({
         id={id}
         className="flex h-(--control-height) w-full min-w-0 items-center justify-between gap-3 rounded-lg border border-input bg-card px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50 data-placeholder:text-muted-foreground"
       >
-        <SelectPrimitive.Value placeholder={placeholder} />
+        <SelectPrimitive.Value
+          className="min-w-0 truncate"
+          placeholder={placeholder}
+        />
         <SelectPrimitive.Icon>
           <ChevronDown aria-hidden="true" className="size-4" />
         </SelectPrimitive.Icon>
@@ -52,7 +55,7 @@ export function Select<Value extends string>({
                   value={option.value}
                   className="flex min-h-10 cursor-default items-center gap-3 rounded-md px-3 py-2 text-sm outline-none select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground"
                 >
-                  <SelectPrimitive.ItemText className="flex-1">
+                  <SelectPrimitive.ItemText className="min-w-0 flex-1 break-words">
                     {option.label}
                   </SelectPrimitive.ItemText>
                   <SelectPrimitive.ItemIndicator>

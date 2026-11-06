@@ -1,58 +1,111 @@
-import { Inline, Page, PageHeader, Stack, TabNav } from "@/components/layout";
-import { AppLink, TabNavLink } from "@/components/ui/link";
-import { Heading } from "@/components/ui/typography";
-import { ServiceList } from "@/features/services/components/ServiceList";
-import { listServices } from "@/features/services/data";
+import { Suspense } from "react";
+import { Inline, Page, PageHeader, Stack } from "@/components/layout";
+import { BoardSpace } from "@/components/layout/board";
+import { FormMessage } from "@/components/ui/form-message";
+import { AppLink } from "@/components/ui/link";
+import { parseBoardFilters } from "@/features/findings/board-validation";
+import {
+  getFindingBoard,
+  getFindingBoardFilterOptions,
+} from "@/features/findings/board-data";
+import { FindingBoard } from "@/features/findings/components/FindingBoard";
+import { FindingBoardFilters } from "@/features/findings/components/FindingBoardFilters";
+import { FindingBoardSkeleton } from "@/features/findings/components/FindingBoardSkeleton";
+import { requireWorkspace } from "@/features/workspaces/data";
+
+type Query = Record<string, string | string[] | undefined>;
 
 export default async function WorkspacePage({
   params,
   searchParams,
 }: {
   params: Promise<{ workspaceSlug: string }>;
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<Query>;
 }) {
   const { workspaceSlug } = await params;
-  const archived = (await searchParams).status === "archived";
-  const { workspace, services } = await listServices(workspaceSlug, archived);
+  const workspace = await requireWorkspace(workspaceSlug);
+  const query = await searchParams;
   return (
-    <Page>
+    <Page width="wide" layout="board">
       <PageHeader
         title={workspace.name}
-        description={`Your role: ${workspace.role}`}
+        description="Findings"
         actions={
-          ["owner", "admin"].includes(workspace.role) && (
-            <AppLink href={`/w/${workspace.slug}/groups`}>Groups</AppLink>
-          )
+          <Inline>
+            <AppLink href={`/w/${workspace.slug}/services`}>Services</AppLink>
+            {["owner", "admin"].includes(workspace.role) && (
+              <AppLink href={`/w/${workspace.slug}/groups`}>Groups</AppLink>
+            )}
+          </Inline>
         }
       />
-      <Stack>
-        <Inline justify="between">
-          <Heading level={2}>
-            {archived ? "Archived services" : "Services"}
-          </Heading>
-          {["owner", "admin"].includes(workspace.role) && (
-            <AppLink href={`/w/${workspace.slug}/services/new`}>
-              Create service
-            </AppLink>
-          )}
-        </Inline>
-        <TabNav>
-          <TabNavLink current={!archived} href={`/w/${workspace.slug}`}>
-            Active services
-          </TabNavLink>
-          <TabNavLink
-            current={archived}
-            href={`/w/${workspace.slug}?status=archived`}
-          >
-            Archived services
-          </TabNavLink>
-        </TabNav>
-        <ServiceList
-          slug={workspace.slug}
-          services={services}
-          archived={archived}
-        />
-      </Stack>
+      <Suspense
+        key={workspaceSlug}
+        fallback={
+          <FindingBoardSkeleton
+            initialStatus={parseBoardFilters(query).filters.status}
+          />
+        }
+      >
+        <BoardContent workspaceSlug={workspaceSlug} query={query} />
+      </Suspense>
     </Page>
+  );
+}
+
+async function BoardContent({
+  workspaceSlug,
+  query,
+}: {
+  workspaceSlug: string;
+  query: Query;
+}) {
+  const options = await getFindingBoardFilterOptions(workspaceSlug, query);
+  const navigationKey = JSON.stringify(Object.entries(query).sort());
+  return (
+    <Stack gap="lg" grow>
+      <FindingBoardFilters
+        slug={workspaceSlug}
+        navigationKey={navigationKey}
+        filters={options.filters}
+        groups={options.groups}
+        services={options.services}
+      />
+      <Suspense
+        key={navigationKey}
+        fallback={
+          <FindingBoardSkeleton
+            includeFilters={false}
+            initialStatus={options.filters.status}
+          />
+        }
+      >
+        <BoardResults workspaceSlug={workspaceSlug} query={query} />
+      </Suspense>
+    </Stack>
+  );
+}
+
+async function BoardResults({
+  workspaceSlug,
+  query,
+}: {
+  workspaceSlug: string;
+  query: Query;
+}) {
+  const board = await getFindingBoard(workspaceSlug, query);
+  return board.filterError ? (
+    <BoardSpace>
+      <FormMessage>{board.filterError}</FormMessage>
+    </BoardSpace>
+  ) : (
+    <FindingBoard
+      key={board.scopeKey}
+      revisionKey={board.revisionKey}
+      slug={workspaceSlug}
+      filters={board.filters}
+      initialColumns={board.columns}
+      scopeKey={board.scopeKey}
+    />
   );
 }

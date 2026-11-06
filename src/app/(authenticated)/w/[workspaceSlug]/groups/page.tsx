@@ -16,9 +16,7 @@ export default async function GroupsPage({
       <PageHeader
         title="Groups"
         description="Manage service access through groups of workspace members."
-        back={
-          <TextLink href={`/w/${workspace.slug}`}>Back to services</TextLink>
-        }
+        back={<TextLink href={`/w/${workspace.slug}`}>Back to board</TextLink>}
       />
       <GroupList slug={workspace.slug} groups={groups} />
       <Section

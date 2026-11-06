@@ -1,0 +1,96 @@
+"use client";
+
+import { Tabs } from "@base-ui/react/tabs";
+import { useState, type ReactNode } from "react";
+import { Heading } from "@/components/ui/typography";
+import { cn } from "@/lib/utils";
+
+export function StatusBoard({
+  columns,
+  initialStatus,
+}: {
+  columns: {
+    status: string;
+    label: string;
+    regionLabel: string;
+    content: ReactNode;
+  }[];
+  initialStatus: string;
+}) {
+  const [selected, setSelected] = useState(initialStatus);
+  return (
+    <Tabs.Root
+      value={selected}
+      onValueChange={(value) => setSelected(String(value))}
+      className="flex min-w-0 flex-1 flex-col"
+      render={
+        <div
+          role="region"
+          aria-label="Finding status board"
+          data-testid="finding-board"
+        />
+      }
+    >
+      <Tabs.List
+        aria-label="Finding status"
+        className="mb-4 flex max-w-full gap-1 overflow-x-auto rounded-lg border bg-muted p-1 xl:hidden"
+      >
+        {columns.map((column) => (
+          <Tabs.Tab
+            key={column.status}
+            value={column.status}
+            className="min-h-10 shrink-0 rounded-md px-3 text-sm font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/50 data-active:bg-card data-active:text-primary data-active:shadow-sm"
+          >
+            {column.label}
+          </Tabs.Tab>
+        ))}
+      </Tabs.List>
+      <div className="grid min-w-0 flex-1 grid-cols-1 gap-3 xl:grid-cols-6">
+        {columns.map((column) => (
+          <Tabs.Panel
+            keepMounted
+            hidden={false}
+            inert={false}
+            tabIndex={-1}
+            key={column.status}
+            value={column.status}
+            aria-label={column.regionLabel}
+            className={cn(
+              "min-h-80 min-w-0 flex-col overflow-hidden rounded-xl border bg-muted/40 outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+              selected === column.status ? "flex" : "hidden xl:flex",
+            )}
+          >
+            <section
+              aria-label={column.regionLabel}
+              className="flex min-h-0 min-w-0 flex-1 flex-col"
+            >
+              <header className="shrink-0 border-b bg-card p-3">
+                <Heading level={2}>{column.label}</Heading>
+              </header>
+              <div
+                role="group"
+                aria-label={`${column.regionLabel} cards`}
+                tabIndex={0}
+                className="min-h-0 min-w-0 flex-1 basis-0 overflow-y-auto p-3 outline-none focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/50 [overflow-wrap:anywhere] [&_button]:max-w-full [&_button]:min-w-0"
+              >
+                {column.content}
+              </div>
+            </section>
+          </Tabs.Panel>
+        ))}
+      </div>
+    </Tabs.Root>
+  );
+}
+
+export function BoardSpace({ children }: { children: ReactNode }) {
+  return <div className="min-h-80 flex-1">{children}</div>;
+}
+
+export function FilterGrid({ children }: { children: ReactNode }) {
+  return (
+    <div className="grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      {children}
+    </div>
+  );
+}

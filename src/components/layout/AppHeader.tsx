@@ -6,7 +6,7 @@ import type { Workspace } from "@/features/workspaces/data";
 export function AppHeader({ workspaces }: { workspaces: Workspace[] }) {
   return (
     <header className="sticky top-0 z-20 border-b bg-card px-4 py-4 sm:px-6">
-      <div className="mx-auto flex max-w-4xl items-center justify-between gap-3">
+      <div className="mx-auto flex w-full items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
           <WorkspaceSelector workspaces={workspaces} />
         </div>
