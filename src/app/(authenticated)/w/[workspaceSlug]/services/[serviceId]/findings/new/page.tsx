@@ -11,7 +11,7 @@ export default async function NewFindingPage({
   const { workspaceSlug, serviceId } = await params;
   const { workspace, service } = await requireService(workspaceSlug, serviceId);
   return (
-    <Page>
+    <Page width="narrow">
       <PageHeader
         title="Create finding"
         description={service.name}

@@ -17,7 +17,7 @@ export default async function EditServicePage({
   );
   if (!["owner", "admin"].includes(workspace.role)) notFound();
   return (
-    <Page>
+    <Page width="narrow">
       <PageHeader
         title="Edit service"
         back={

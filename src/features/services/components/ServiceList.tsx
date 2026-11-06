@@ -24,9 +24,9 @@ export function ServiceList({
       />
     );
   return (
-    <ItemList>
+    <ItemList layout="grid" density="compact">
       {services.map((service) => (
-        <ListItem key={service.id}>
+        <ListItem density="compact" key={service.id}>
           <Stack gap="sm">
             <TextLink href={`/w/${slug}/services/${service.id}`}>
               {service.name}

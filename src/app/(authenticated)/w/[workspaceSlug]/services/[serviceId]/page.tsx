@@ -17,7 +17,7 @@ export default async function ServicePage({
   const archived = service.archivedAt !== null;
   const manage = ["owner", "admin"].includes(workspace.role);
   return (
-    <Page>
+    <Page width="readable">
       <PageHeader
         title={service.name}
         back={

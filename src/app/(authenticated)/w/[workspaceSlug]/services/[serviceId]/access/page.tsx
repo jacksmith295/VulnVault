@@ -12,7 +12,7 @@ export default async function ServiceAccessPage({
   const { workspace, service, groups, selectedGroupIds } =
     await getServiceAccess(workspaceSlug, serviceId);
   return (
-    <Page>
+    <Page width="narrow">
       <PageHeader
         title="Service access"
         description={service.name}

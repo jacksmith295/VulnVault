@@ -80,6 +80,8 @@ The original `0000` migration and scaffold `users` table are preserved. The addi
 
 Shared styled Base UI controls live in `src/components/ui`, and reusable page/form/layout structures live in `src/components/layout`. Pages and features compose these TSX components; ESLint prevents native HTML and cosmetic `className` overrides there. Semantic HTML and Tailwind defaults belong in the shared definitions, with typed variants for recurring differences.
 
+Routine pages use bounded widths for inventories, forms, and readable details; the workspace board remains fluid. Board filters are inline from 1024px and use a modal drawer on smaller screens, preserving drafts and URL history. See the [responsive UI plan](docs/responsive-ui-plan.md) for component responsibilities and verification.
+
 The green theme supports Light, Dark, and System from the theme menu on both public and authenticated screens. Preferences persist in the browser. Theme colours and typography are centralised in `src/app/globals.css`; changing theme preserves unsaved form state.
 
 ## Delivery

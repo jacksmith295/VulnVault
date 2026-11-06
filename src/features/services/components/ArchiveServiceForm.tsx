@@ -25,7 +25,7 @@ export function ArchiveServiceForm({
     { error: "", conflict: false },
   );
   return (
-    <FormLayout action={action} tone="surface" aria-busy={pending}>
+    <FormLayout action={action} width="narrow" tone="surface" aria-busy={pending}>
       <Text size="sm" tone="muted">
         {archived
           ? "Restore this service to the active list so it can be edited."

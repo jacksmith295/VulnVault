@@ -19,7 +19,7 @@ export default async function EditFindingPage({
     findingId,
   );
   return (
-    <Page>
+    <Page width="narrow">
       <PageHeader
         title="Edit finding"
         description={service.name}

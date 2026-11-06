@@ -38,18 +38,20 @@ export function FindingDetails({
         </TextLink>
       )}
       <Section title="Description">
-        <Text preserveWhitespace>{finding.description}</Text>
+        <Text preserveWhitespace measure="readable">
+          {finding.description}
+        </Text>
       </Section>
       <Section title="Remediation notes">
-        <Text preserveWhitespace>
+        <Text preserveWhitespace measure="readable">
           {finding.remediationNotes || "No remediation notes provided."}
         </Text>
       </Section>
       <Section title="Reference URLs">
         {references.length ? (
-          <ItemList>
+          <ItemList density="compact">
             {references.map((reference) => (
-              <ListItem key={reference.id}>
+              <ListItem density="compact" key={reference.id}>
                 <TextLink
                   href={reference.url}
                   target="_blank"

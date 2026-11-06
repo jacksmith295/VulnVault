@@ -20,6 +20,7 @@ export default async function GroupsPage({
       />
       <GroupList slug={workspace.slug} groups={groups} />
       <Section
+        width="narrow"
         title="Create group"
         description="Create a custom group, then select its members. New groups begin with no members."
       >

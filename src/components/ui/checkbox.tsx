@@ -32,7 +32,7 @@ export function CheckboxField({
   return (
     <label className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed">
       <Checkbox {...props} />
-      <span className="min-w-0">
+      <span className="min-w-0 [overflow-wrap:anywhere]">
         <span className="font-medium">{label}</span>
         {description && (
           <span className="mt-1 block text-muted-foreground">

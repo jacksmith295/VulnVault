@@ -71,7 +71,7 @@ export function MenuLink({
       render={<NextLink href={href} {...props} />}
       aria-current={current ? "page" : undefined}
     >
-      <span className="min-w-0 flex-1 break-words">{children}</span>
+      <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{children}</span>
       {current && (
         <>
           <Check aria-hidden="true" className="size-4 shrink-0" />

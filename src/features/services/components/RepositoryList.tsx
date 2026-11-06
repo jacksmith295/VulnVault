@@ -12,9 +12,9 @@ export function RepositoryList({
   if (!repositories.length)
     return <Text tone="muted">No repositories added.</Text>;
   return (
-    <ItemList>
+    <ItemList density="compact">
       {repositories.map((repository) => (
-        <ListItem key={repository.id}>
+        <ListItem density="compact" key={repository.id}>
           <TextLink
             href={repository.url}
             target="_blank"

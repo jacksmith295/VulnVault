@@ -779,3 +779,147 @@ test("workspace home preserves filters while board results stream", async ({
     await cleanup(pool, fixture, [owner.id]);
   }
 });
+
+test("mobile filters use a draft-preserving drawer and release focus on desktop resize", async ({
+  page,
+  context,
+}) => {
+  const owner = await verifiedAccount(context);
+  const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+  const fixture = await workspaceFixture(page, pool);
+  const blocker = await pool.connect();
+  const dialog = page.getByRole("dialog", {
+    name: "Finding filters",
+    exact: true,
+  });
+  const trigger = page.getByRole("button", { name: /^Filters \(/u });
+  const severity = page.getByRole("combobox", {
+    name: "Severity",
+    exact: true,
+  });
+  try {
+    await finding(
+      pool,
+      fixture.primary,
+      "Critical mobile work",
+      "new",
+      1,
+      "critical",
+    );
+    await finding(pool, fixture.secondary, "High mobile work");
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(fixture.path);
+    await expect(trigger).toHaveText("Filters (0)");
+    await expect(severity).toHaveCount(0);
+    const board = page.locator('[data-testid="finding-board"]:visible');
+    const before = await board.boundingBox();
+    expect(before!.y).toBeLessThan(450);
+    await trigger.click();
+    await expect(dialog).toBeVisible();
+    await expect(page.getByRole("option")).toHaveCount(0);
+    await severity.press("ArrowDown");
+    await expect(
+      page.getByRole("option", { name: "Critical", exact: true }),
+    ).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(
+      page.getByRole("option", { name: "Critical", exact: true }),
+    ).toHaveCount(0);
+    await expect(dialog).toBeVisible();
+    await expect(severity).toBeFocused();
+    await severity.press("ArrowDown");
+    await page.keyboard.press("Home");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+    await expect(severity).toContainText("Critical");
+    await severity.press("Tab");
+    expect(
+      await dialog.evaluate((element) =>
+        element.contains(document.activeElement),
+      ),
+    ).toBe(true);
+    await page.keyboard.press("Escape");
+    await expect(dialog).not.toBeVisible();
+    await expect(trigger).toBeFocused();
+    await expect(trigger).toHaveText("Filters (0)");
+    await chooseTheme(page, "Dark");
+    await trigger.click();
+    await expect(severity).toContainText("Critical");
+    await page.screenshot({
+      path: test.info().outputPath("filters-mobile-dark.png"),
+      fullPage: true,
+    });
+    await blocker.query("BEGIN");
+    await blocker.query(
+      "SET LOCAL idle_in_transaction_session_timeout = '20s'",
+    );
+    await blocker.query("LOCK TABLE finding IN ACCESS EXCLUSIVE MODE");
+    await applyFilters(page);
+    await expect(dialog).not.toBeVisible();
+    await expect(
+      page.getByRole("status", { name: "Loading findings", exact: true }),
+    ).toBeVisible();
+    const pending = await board.boundingBox();
+    expect(Math.abs(pending!.y - before!.y)).toBeLessThanOrEqual(2);
+    expect(Math.abs(pending!.height - before!.height)).toBeLessThanOrEqual(2);
+    await blocker.query("COMMIT");
+    await expect(page).toHaveURL(/severity=critical/u);
+    await expect(trigger).toHaveText("Filters (1)");
+    await expect(
+      page.getByRole("link", { name: "Critical mobile work", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "High mobile work", exact: true }),
+    ).toHaveCount(0);
+    await trigger.click();
+    await page
+      .getByRole("link", { name: "Clear filters", exact: true })
+      .click();
+    await expect(dialog).not.toBeVisible();
+    await expect(trigger).toHaveText("Filters (0)");
+    await expect(
+      page.getByRole("link", { name: "High mobile work", exact: true }),
+    ).toBeVisible();
+    await page.goBack();
+    await expect(trigger).toHaveText("Filters (1)");
+    await trigger.click();
+    await expect(severity).toContainText("Critical");
+    await selectFilter(page, "Severity", "High");
+    await page.setViewportSize({ width: 1023, height: 900 });
+    await expect(dialog).toBeVisible();
+    await page.setViewportSize({ width: 1024, height: 900 });
+    await expect(dialog).not.toBeVisible();
+    await expect(
+      page.getByRole("combobox", { name: "Group", exact: true }),
+    ).toBeFocused();
+    await expect(severity).toContainText("High");
+    expect(
+      await page.evaluate(() => getComputedStyle(document.body).overflow),
+    ).not.toBe("hidden");
+    await page.setViewportSize({ width: 1023, height: 900 });
+    await trigger.click();
+    await expect(severity).toContainText("High");
+    // The left edge is outside the right-aligned drawer at this width.
+    await page.mouse.click(10, 450);
+    await expect(dialog).not.toBeVisible();
+    await expect(trigger).toBeFocused();
+    for (const width of [320, 390, 768, 1023, 1024, 1279, 1280, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+      ).toBe(true);
+      if (width < 1024) await expect(trigger).toBeVisible();
+      else await expect(severity).toBeVisible();
+      const visibleRegions = page.getByRole("region", {
+        name: /^(New|Triaged|In progress|Resolved|Rejected|Accepted risk) findings$/u,
+      });
+      await expect(visibleRegions).toHaveCount(width >= 1280 ? 6 : 1);
+    }
+  } finally {
+    await blocker.query("ROLLBACK");
+    blocker.release();
+    await cleanup(pool, fixture, [owner.id]);
+  }
+});

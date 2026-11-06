@@ -2,8 +2,12 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { FormActions, FormLayout } from "@/components/layout";
-import { FilterGrid } from "@/components/layout/board";
+import {
+  BoardFilterActions,
+  BoardFilterForm,
+  FilterGrid,
+} from "@/components/layout/board";
+import { ResponsiveFilters } from "@/components/layout/responsive-filters";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/field";
 import { TextLink } from "@/components/ui/link";
@@ -100,67 +104,80 @@ export function FindingBoardFilters({
       ],
     },
   ];
+  const appliedCount =
+    [filters.group, filters.service, filters.severity, filters.status].filter(
+      Boolean,
+    ).length + (filters.archive === "active" ? 0 : 1);
   return (
-    <FormLayout
-      action={`/w/${slug}`}
-      method="get"
-      tone="surface"
-      aria-busy={pending}
-      onSubmit={(event) => {
-        event.preventDefault();
-        const query = new URLSearchParams(values);
-        setRequestedNavigationKey(JSON.stringify([...query.entries()].sort()));
-        startTransition(() =>
-          router.push(`/w/${slug}?${query}`, { scroll: false }),
-        );
-      }}
-    >
-      <FilterGrid>
-        {fields.map((field) => (
-          <FormField
-            key={field.name}
-            id={`filter-${field.name}`}
-            label={field.label}
-          >
-            <Select
-              id={`filter-${field.name}`}
-              name={field.name}
-              value={values[field.name]}
-              options={field.options}
-              onValueChange={(value) =>
-                setValues((previous) => ({
-                  ...previous,
-                  [field.name]: value ?? "",
-                }))
-              }
-            />
-          </FormField>
-        ))}
-      </FilterGrid>
-      <FormActions>
-        <Button type="submit" disabled={pending}>
-          {pending ? "Applying filters…" : "Apply filters"}
-        </Button>
-        <TextLink
-          href={`/w/${slug}`}
-          scroll={false}
-          onClick={(event) => {
-            if (
-              event.metaKey ||
-              event.ctrlKey ||
-              event.shiftKey ||
-              event.altKey
-            )
-              return;
+    <ResponsiveFilters appliedCount={appliedCount} pending={pending}>
+      {(presentation, close) => (
+        <BoardFilterForm
+          action={`/w/${slug}`}
+          method="get"
+          aria-busy={pending}
+          onSubmit={(event) => {
             event.preventDefault();
-            setValues(filterValues({ archive: "active" }));
-            setRequestedNavigationKey(JSON.stringify([]));
-            startTransition(() => router.push(`/w/${slug}`, { scroll: false }));
+            close();
+            const query = new URLSearchParams(values);
+            setRequestedNavigationKey(
+              JSON.stringify([...query.entries()].sort()),
+            );
+            startTransition(() =>
+              router.push(`/w/${slug}?${query}`, { scroll: false }),
+            );
           }}
         >
-          Clear filters
-        </TextLink>
-      </FormActions>
-    </FormLayout>
+          <FilterGrid>
+            {fields.map((field) => (
+              <FormField
+                key={field.name}
+                id={`filter-${presentation}-${field.name}`}
+                label={field.label}
+              >
+                <Select
+                  id={`filter-${presentation}-${field.name}`}
+                  name={field.name}
+                  value={values[field.name]}
+                  options={field.options}
+                  onValueChange={(value) =>
+                    setValues((previous) => ({
+                      ...previous,
+                      [field.name]: value ?? "",
+                    }))
+                  }
+                />
+              </FormField>
+            ))}
+            <BoardFilterActions>
+              <Button type="submit" disabled={pending}>
+                {pending ? "Applying filters…" : "Apply filters"}
+              </Button>
+              <TextLink
+                href={`/w/${slug}`}
+                scroll={false}
+                onClick={(event) => {
+                  if (
+                    event.metaKey ||
+                    event.ctrlKey ||
+                    event.shiftKey ||
+                    event.altKey
+                  )
+                    return;
+                  event.preventDefault();
+                  close();
+                  setValues(filterValues({ archive: "active" }));
+                  setRequestedNavigationKey(JSON.stringify([]));
+                  startTransition(() =>
+                    router.push(`/w/${slug}`, { scroll: false }),
+                  );
+                }}
+              >
+                Clear filters
+              </TextLink>
+            </BoardFilterActions>
+          </FilterGrid>
+        </BoardFilterForm>
+      )}
+    </ResponsiveFilters>
   );
 }

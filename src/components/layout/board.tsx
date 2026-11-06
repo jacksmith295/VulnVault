@@ -1,7 +1,7 @@
 "use client";
 
 import { Tabs } from "@base-ui/react/tabs";
-import { useState, type ReactNode } from "react";
+import { useState, type ComponentProps, type ReactNode } from "react";
 import { Heading } from "@/components/ui/typography";
 import { cn } from "@/lib/utils";
 
@@ -89,7 +89,31 @@ export function BoardSpace({ children }: { children: ReactNode }) {
 
 export function FilterGrid({ children }: { children: ReactNode }) {
   return (
-    <div className="grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+    <div className="grid min-w-0 gap-4 lg:grid-cols-3 lg:items-end lg:gap-3 xl:grid-cols-[repeat(5,minmax(0,1fr))_auto]">
+      {children}
+    </div>
+  );
+}
+
+export function BoardFilterForm(props: ComponentProps<"form">) {
+  return <form className="min-w-0 rounded-xl border bg-card p-4" {...props} />;
+}
+
+export function BoardFilterActions({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex min-h-(--control-height) flex-wrap items-center gap-3 lg:col-span-3 xl:col-span-1">
+      {children}
+    </div>
+  );
+}
+
+export function DesktopFilters({ children }: { children: ReactNode }) {
+  return <div className="hidden min-w-0 lg:block">{children}</div>;
+}
+
+export function MobileFilters({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex min-h-(--control-height) items-center lg:hidden">
       {children}
     </div>
   );

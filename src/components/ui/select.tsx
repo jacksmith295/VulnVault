@@ -47,7 +47,7 @@ export function Select<Value extends string>({
           alignItemWithTrigger={false}
           className="z-50 outline-none"
         >
-          <SelectPrimitive.Popup className="max-h-(--available-height) min-w-(--anchor-width) overflow-y-auto rounded-xl border bg-popover p-1.5 text-popover-foreground shadow-lg outline-none">
+          <SelectPrimitive.Popup className="max-h-(--available-height) min-w-(--anchor-width) max-w-[calc(100vw-2rem)] overflow-y-auto rounded-xl border bg-popover p-1.5 text-popover-foreground shadow-lg outline-none">
             <SelectPrimitive.List>
               {options.map((option) => (
                 <SelectPrimitive.Item
@@ -55,7 +55,7 @@ export function Select<Value extends string>({
                   value={option.value}
                   className="flex min-h-10 cursor-default items-center gap-3 rounded-md px-3 py-2 text-sm outline-none select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground"
                 >
-                  <SelectPrimitive.ItemText className="min-w-0 flex-1 break-words">
+                  <SelectPrimitive.ItemText className="min-w-0 flex-1 [overflow-wrap:anywhere]">
                     {option.label}
                   </SelectPrimitive.ItemText>
                   <SelectPrimitive.ItemIndicator>

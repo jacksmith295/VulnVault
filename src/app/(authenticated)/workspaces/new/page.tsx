@@ -5,7 +5,7 @@ import { requireSession } from "@/lib/auth-session";
 export default async function NewWorkspacePage() {
   await requireSession();
   return (
-    <Page>
+    <Page width="narrow">
       <PageHeader
         title="Create workspace"
         description="Bring your services and findings together. You will be the workspace owner."
