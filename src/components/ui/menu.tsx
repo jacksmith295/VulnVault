@@ -38,7 +38,7 @@ export function MenuPopup({
         className="z-50 outline-none"
       >
         <MenuPrimitive.Popup
-          className="max-h-(--available-height) w-72 max-w-[calc(100vw-2rem)] origin-(--transform-origin) overflow-y-auto rounded-xl border bg-popover p-1.5 text-popover-foreground shadow-lg outline-none"
+          className="max-h-(--available-height) w-72 max-w-[calc(100vw-2rem)] origin-(--transform-origin) overflow-y-auto rounded-xl border bg-popover p-1.5 text-popover-foreground shadow-lg outline-none motion-safe:transition-[opacity,scale] motion-safe:duration-(--motion-duration-normal) motion-safe:ease-(--motion-ease-out) motion-safe:data-starting-style:opacity-0 motion-safe:data-starting-style:scale-98 motion-safe:data-ending-style:opacity-0 motion-safe:data-ending-style:scale-98 data-instant:duration-0"
           {...props}
         >
           {children}
@@ -48,7 +48,7 @@ export function MenuPopup({
   );
 }
 const itemClass =
-  "flex min-h-10 cursor-default items-center gap-3 rounded-md px-3 py-2 text-sm leading-snug outline-none select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground data-disabled:opacity-50";
+  "flex min-h-10 cursor-default items-center gap-3 rounded-md px-3 py-2 text-sm leading-snug outline-none select-none motion-safe:transition-[color,background-color,border-color,box-shadow,opacity] motion-safe:duration-(--motion-duration-fast) motion-safe:ease-(--motion-ease-out) data-highlighted:bg-accent data-highlighted:text-accent-foreground data-disabled:opacity-50";
 export function MenuItem({ className, ...props }: MenuPrimitive.Item.Props) {
   return (
     <MenuPrimitive.Item
@@ -71,7 +71,7 @@ export function MenuLink({
       render={<NextLink href={href} {...props} />}
       aria-current={current ? "page" : undefined}
     >
-      <span className="min-w-0 flex-1 break-words">{children}</span>
+      <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{children}</span>
       {current && (
         <>
           <Check aria-hidden="true" className="size-4 shrink-0" />

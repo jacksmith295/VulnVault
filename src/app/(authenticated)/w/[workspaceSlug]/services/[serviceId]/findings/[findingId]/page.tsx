@@ -18,7 +18,7 @@ export default async function FindingPage({
     findingId,
   );
   return (
-    <Page>
+    <Page width="readable">
       <PageHeader
         title={finding.title}
         description={service.name}

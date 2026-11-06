@@ -1,7 +1,7 @@
 import type { ComponentProps } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-const textVariants = cva("leading-relaxed break-words", {
+const textVariants = cva("min-w-0 leading-relaxed [overflow-wrap:anywhere]", {
   variants: {
     tone: {
       default: "text-foreground",
@@ -18,13 +18,18 @@ export function Text({
   tone,
   size,
   preserveWhitespace,
+  measure = "default",
   ...props
 }: ComponentProps<"p"> &
-  VariantProps<typeof textVariants> & { preserveWhitespace?: boolean }) {
+  VariantProps<typeof textVariants> & {
+    preserveWhitespace?: boolean;
+    measure?: "default" | "readable";
+  }) {
   return (
     <p
       className={cn(
         textVariants({ tone, size }),
+        measure === "readable" && "max-w-[70ch]",
         preserveWhitespace && "whitespace-pre-wrap",
         className,
       )}
@@ -41,7 +46,7 @@ export function Heading({
   return (
     <Tag
       className={cn(
-        "font-heading font-semibold tracking-tight break-words",
+        "min-w-0 font-heading font-semibold tracking-tight [overflow-wrap:anywhere]",
         level === 1
           ? "text-3xl leading-tight"
           : level === 2

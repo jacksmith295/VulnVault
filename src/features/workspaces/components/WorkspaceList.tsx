@@ -12,9 +12,9 @@ export function WorkspaceList({ workspaces }: { workspaces: Workspace[] }) {
       />
     );
   return (
-    <ItemList>
+    <ItemList layout="grid" density="compact">
       {workspaces.map((workspace) => (
-        <ListItem key={workspace.id}>
+        <ListItem density="compact" key={workspace.id}>
           <Stack gap="sm">
             <TextLink href={`/w/${workspace.slug}`}>{workspace.name}</TextLink>
             <Text size="sm" tone="muted">

@@ -3,8 +3,9 @@ import { cn } from "@/lib/utils";
 import { Heading, Text } from "@/components/ui/typography";
 import { ThemeSelector } from "@/components/theme/ThemeSelector";
 const widths = {
-  default: "max-w-none",
-  narrow: "max-w-xl",
+  default: "max-w-6xl",
+  narrow: "max-w-[40rem]",
+  readable: "max-w-4xl",
   wide: "max-w-none",
 };
 export function Page({
@@ -19,7 +20,7 @@ export function Page({
   return (
     <main
       className={cn(
-        "mx-auto flex w-full min-w-0 flex-col gap-8 px-4 py-8 sm:px-6 sm:py-12",
+        "mx-auto flex w-full min-w-0 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8",
         widths[width],
         layout === "board" && "flex-1 gap-6 py-6 sm:py-6",
         className,
@@ -93,18 +94,21 @@ export function Section({
   title,
   description,
   tone = "default",
+  width = "default",
   children,
   ...props
 }: Omit<ComponentProps<"section">, "title"> & {
   title?: ReactNode;
   description?: ReactNode;
   tone?: "default" | "danger";
+  width?: "default" | "narrow";
 }) {
   return (
     <section
       className={cn(
         "min-w-0 space-y-4 rounded-xl border bg-card p-5 shadow-sm sm:p-6",
         tone === "danger" && "border-destructive/40",
+        width === "narrow" && "w-full max-w-[40rem]",
       )}
       {...props}
     >
@@ -135,7 +139,7 @@ export function FormLayout({
     <form
       className={cn(
         "flex min-w-0 flex-col gap-5",
-        width === "narrow" && "max-w-xl",
+        width === "narrow" && "w-full max-w-[40rem]",
         tone === "surface" && "rounded-xl border bg-card p-5 sm:p-6",
         className,
       )}
@@ -190,16 +194,39 @@ export function AuthSurface({ children }: { children: ReactNode }) {
     </section>
   );
 }
-export function ItemList({ className, ...props }: ComponentProps<"ul">) {
+export function ItemList({
+  layout = "list",
+  density = "default",
+  className,
+  ...props
+}: ComponentProps<"ul"> & {
+  layout?: "list" | "grid";
+  density?: "default" | "compact";
+}) {
   return (
-    <ul className={cn("flex min-w-0 flex-col gap-4", className)} {...props} />
+    <ul
+      className={cn(
+        "min-w-0",
+        layout === "grid"
+          ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+          : "flex flex-col",
+        density === "compact" ? "gap-3" : "gap-4",
+        className,
+      )}
+      {...props}
+    />
   );
 }
-export function ListItem({ className, ...props }: ComponentProps<"li">) {
+export function ListItem({
+  density = "default",
+  className,
+  ...props
+}: ComponentProps<"li"> & { density?: "default" | "compact" }) {
   return (
     <li
       className={cn(
-        "min-w-0 rounded-xl border bg-card p-5 shadow-sm",
+        "min-w-0 rounded-xl border bg-card shadow-sm",
+        density === "compact" ? "p-3 sm:p-4" : "p-5",
         className,
       )}
       {...props}
@@ -221,7 +248,7 @@ export function DefinitionItem({
   return (
     <div className="min-w-0 space-y-1">
       <dt className="text-sm text-muted-foreground">{label}</dt>
-      <dd className="break-words text-sm font-medium">{children}</dd>
+      <dd className="text-sm font-medium [overflow-wrap:anywhere]">{children}</dd>
     </div>
   );
 }

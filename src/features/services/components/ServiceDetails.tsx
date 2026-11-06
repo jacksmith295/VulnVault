@@ -1,4 +1,4 @@
-import { Section, Stack } from "@/components/layout";
+import { Inline, Section, Stack } from "@/components/layout";
 import { Badge } from "@/components/ui/badge";
 import { TextLink } from "@/components/ui/link";
 import { Text } from "@/components/ui/typography";
@@ -27,7 +27,7 @@ export function ServiceDetails({
         </Badge>
       </Text>
       <Section title="Description">
-        <Text preserveWhitespace>
+        <Text preserveWhitespace measure="readable">
           {service.description || "No description provided."}
         </Text>
       </Section>
@@ -39,14 +39,16 @@ export function ServiceDetails({
       </Text>
       {manage && (
         <Stack>
-          <TextLink href={`/w/${slug}/services/${service.id}/access`}>
-            Manage access
-          </TextLink>
-          {!archived && (
-            <TextLink href={`/w/${slug}/services/${service.id}/edit`}>
-              Edit service
+          <Inline>
+            <TextLink href={`/w/${slug}/services/${service.id}/access`}>
+              Manage access
             </TextLink>
-          )}
+            {!archived && (
+              <TextLink href={`/w/${slug}/services/${service.id}/edit`}>
+                Edit service
+              </TextLink>
+            )}
+          </Inline>
           <ArchiveServiceForm
             slug={slug}
             id={service.id}

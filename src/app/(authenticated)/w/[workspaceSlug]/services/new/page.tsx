@@ -11,7 +11,7 @@ export default async function NewServicePage({
   const { workspaceSlug } = await params;
   const workspace = await requireWorkspace(workspaceSlug, ["owner", "admin"]);
   return (
-    <Page>
+    <Page width="narrow">
       <PageHeader
         title="Create service"
         back={

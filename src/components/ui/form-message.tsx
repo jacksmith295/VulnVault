@@ -9,7 +9,7 @@ export function FormMessage({
     <p
       role={tone === "error" ? "alert" : "status"}
       className={cn(
-        "rounded-lg border p-3 text-sm leading-relaxed",
+        "rounded-lg border p-3 text-sm leading-relaxed motion-safe:animate-feedback",
         tone === "error"
           ? "border-destructive/30 bg-destructive/5 text-destructive"
           : tone === "success"

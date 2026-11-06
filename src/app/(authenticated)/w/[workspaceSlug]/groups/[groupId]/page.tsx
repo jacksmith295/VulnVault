@@ -15,7 +15,7 @@ export default async function GroupPage({
     groupId,
   );
   return (
-    <Page>
+    <Page width="narrow">
       <PageHeader
         title={group.name}
         back={

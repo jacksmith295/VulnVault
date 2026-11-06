@@ -1,5 +1,12 @@
-import { FormActions, FormLayout, Stack } from "@/components/layout";
-import { FilterGrid, StatusBoard } from "@/components/layout/board";
+import { Stack } from "@/components/layout";
+import {
+  BoardFilterActions,
+  BoardFilterForm,
+  DesktopFilters,
+  MobileFilters,
+  FilterGrid,
+  StatusBoard,
+} from "@/components/layout/board";
 import { LoadingRegion } from "@/components/layout/loading";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,19 +22,27 @@ export function FindingBoardSkeleton({
   return (
     <LoadingRegion label="Loading findings">
       {includeFilters && (
-        <FormLayout tone="surface">
-          <FilterGrid>
-            {Array.from({ length: 5 }, (_, index) => (
-              <Stack gap="sm" key={index}>
-                <Skeleton size="label" />
-                <Skeleton size="control" />
-              </Stack>
-            ))}
-          </FilterGrid>
-          <FormActions>
-            <Skeleton size="control" />
-          </FormActions>
-        </FormLayout>
+        <>
+          <MobileFilters>
+            <Skeleton size="label" />
+          </MobileFilters>
+          <DesktopFilters>
+            <BoardFilterForm>
+              <FilterGrid>
+                {Array.from({ length: 5 }, (_, index) => (
+                  <Stack gap="sm" key={index}>
+                    <Skeleton size="label" />
+                    <Skeleton size="control" />
+                  </Stack>
+                ))}
+                <BoardFilterActions>
+                  <Skeleton size="label" />
+                  <Skeleton size="label" />
+                </BoardFilterActions>
+              </FilterGrid>
+            </BoardFilterForm>
+          </DesktopFilters>
+        </>
       )}
       <StatusBoard
         initialStatus={initialStatus}
