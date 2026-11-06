@@ -17,12 +17,9 @@ The initial product is self-hosted locally: Next.js on the host for development,
 | [Manual findings](manual-findings-plan.md) | One service per finding; New, Triaged, In progress, Resolved, Rejected, and Accepted risk statuses, with reopening. Every known workspace role can create/update accessible findings. No role can delete findings; archived-service findings are read-only. |
 | [Workspace board](findings-board-plan.md), [interactions](board-interactions-plan.md), and [responsive UI](responsive-ui-plan.md) | Authorised filters, bounded columns with Load more, status menus and dragging, mobile status tabs, and responsive filters. [Shared UI and themes](ui-foundation-plan.md) support light/dark/system preferences. |
 | [Dependabot ingestion](dependabot-ingestion-plan.md) | Operator-bound GitHub App installations, workspace repository mappings, local polling and Sync now, recoverable sync status, deduplication, and retained provenance. Real alerts have been imported. Upstream state refreshes independently of local triage and edits. |
+| [PC-local hosting](local-hosting.md) | Optional production Docker app for trusted Wi-Fi HTTP or private Tailscale HTTPS. Existing Compose data and device identity are retained; the inbox stays local. Container GitHub sync is disabled; polling uses the host worker. |
 
 Reliability fixes from PR #16 are merged: continuous polling recovers from unexpected database failures, configured-App mappings cannot be starved by old mappings, mobile status selection and valid drafts survive refreshes, and integration toggle failures return recoverable feedback. Worker, PostgreSQL, and browser regressions cover these outcomes alongside existing permission, concurrency, and data-preservation checks.
-
-## Implemented, awaiting merge
-
-Optional [phone access from the local PC](local-hosting.md) is implemented on the consolidation branch, awaiting review, verification, and merge. It provides alternative trusted Wi-Fi HTTP and private Tailscale HTTPS modes, reuses existing Compose data, and keeps the inbox local to the PC. Container GitHub sync remains disabled; polling uses the host worker. Public hosting and cloud deployment remain deferred.
 
 ## Next delivery slices
 
@@ -43,6 +40,11 @@ Use this trial to agree on completion and discover the next usability needs.
 ### 3. Triage usability design
 
 Design imported-finding search across title, package, GHSA, and CVE, plus source and upstream-state filters. Make service finding lists compact and bounded; they currently load all rows. Agree on explicit reconciliation behaviour before adding actions that apply upstream changes locally. Preserve the separation between upstream facts and local decisions.
+
+## Planned improvements
+
+- **Service-level integrations and recommendations:** Move repository integration setup, sync controls, and status into each service. Prioritise compatible integrations from its linked repository URLs: for example, a linked VulnVault GitHub repository should put GitHub integration at the top. Recommendations must distinguish compatibility from actual configuration/access. Retain shared workspace installation authorisation where needed and existing permissions; agree those boundaries before implementation.
+- **One-command PC startup:** Add a documented command or script to run after boot that brings up Docker, PostgreSQL, Mailpit, the app, Tailscale when selected, and the configured integration worker. Reuse the existing Compose project, volumes, and device identity; avoid duplicate processes, wait for health, and report the phone URL or actionable setup errors. Agree privilege and rebuild handling; do not silently migrate data or re-enrol Tailscale.
 
 ## Later decisions
 
