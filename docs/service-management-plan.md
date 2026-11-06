@@ -1,10 +1,10 @@
 # Service management
 
-Status: implemented on its feature branch, including the approved schema, permissions, version checks, and archive/restore lifecycle. Awaiting PR review and merge. Services precede invitations to make the solo workflow useful sooner.
+Status: merged in PR 3. Includes the approved schema, permissions, version checks, and archive/restore lifecycle. PR 7 supersedes the original workspace-wide member access with [service access groups](service-access-groups-plan.md). Invitations remain separate.
 
 ## Experience
 
-- The workspace landing page lists active services and offers an archived-services view. Owners/admins see Create service; members have read access.
+- The workspace landing page lists active services and offers an archived-services view. Owners/admins see Create service; members see only services their groups grant access to.
 - Creation asks for a name, optional description, and zero or more repository URLs. No repository integration credentials or automatic connection is required.
 - Each service has a detail page showing its description, repository links, and archive status. Owners/admins can edit active services, archive them, and restore archived services. Editing an archived service requires restoring it first.
 - Archive and restore are explicit actions. Archiving removes a service from the default list while preserving its details and repository associations. No permanent deletion is exposed.
@@ -34,9 +34,9 @@ Proposed validation limits:
 
 Create a `features/services` module with validation, server-only data access, Server Actions, and focused UI components. Server Components perform reads. Shared layout and auth code remain responsible for their existing roles.
 
-- Every operation requires a verified session and fresh workspace membership. Owner/admin manage services; member can view active and archived services. Unknown roles fail closed.
+- Every operation requires a verified session and fresh workspace membership. Owner/admin manage services; member can view active and archived services their groups grant access to. Unknown roles fail closed.
 - Resolve a service using both its ID and the authorised workspace ID. Apply the same scope when reading or modifying repository associations. Inaccessible and missing resources have the same not-found experience.
-- Check mutation permissions within the database transaction and lock the membership row until commit, using consistent lock ordering. Membership removal or demotion must not race past an earlier permission check.
+- Acquire the workspace permission lock before membership and service locks, then check fresh permissions within the transaction. Ordinary service mutations hold a shared workspace lock; service access changes hold an exclusive lock. Hold these locks through commit, following the [current permission protocol](service-access-groups-plan.md#authorisation-and-concurrency). Membership removal or demotion must not race past an earlier permission check.
 - Create the service and repository associations atomically. Edit service details and repository associations together. Preserve IDs for unchanged associations; delete only explicitly removed associations within the edit transaction.
 - Use an integer version for concurrent edits. Every edit, archive, or restore conditionally matches the submitted version and required archive state, then increments the version. Stale submissions fail with a useful reload/retry message and do not modify repositories.
 - Keep timestamps for display, rather than using them as concurrency tokens. Creation derives ownership from authorised workspace context rather than trusting browser-supplied ownership fields.

@@ -1,5 +1,7 @@
+import { authThrottlePool } from "@/lib/server/database";
+import { resetAuthRateLimits } from "../helpers/auth-rate-limits";
 import { randomUUID } from "node:crypto";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { and, eq, inArray } from "drizzle-orm";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 
@@ -65,6 +67,7 @@ async function create(slug: string, name = "Example workspace") {
 
 beforeAll(async () => {
   await migrate(db, { migrationsFolder: "./drizzle" });
+  await resetAuthRateLimits();
   verified = await person();
   outsider = await person();
   unverified = await person(false);
@@ -75,6 +78,7 @@ afterAll(async () => {
     await db.delete(rateLimit).where(inArray(rateLimit.key, people.map((id) => `workspace-create:${id}`)));
     await db.delete(user).where(inArray(user.id, people));
   }
+  await authThrottlePool.end();
   await pool.end();
 });
 
@@ -211,3 +215,6 @@ describe("workspace creation and access with real PostgreSQL and sessions", () =
     }
   });
 });
+
+// Authentication uses one local bucket, so each test starts with a fresh budget.
+beforeEach(resetAuthRateLimits);

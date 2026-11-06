@@ -1,5 +1,7 @@
+import { authThrottlePool } from "@/lib/server/database";
+import { resetAuthRateLimits } from "../helpers/auth-rate-limits";
 import { randomUUID } from "node:crypto";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { eq, inArray } from "drizzle-orm";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 
@@ -64,6 +66,7 @@ async function create(id = serviceId) {
 }
 beforeAll(async () => {
   await migrate(db, { migrationsFolder: "./drizzle" });
+  await resetAuthRateLimits();
   const email = `findings-${run}@example.com`;
   const password = "Finding-password-123!";
   const headers = {
@@ -138,6 +141,7 @@ afterAll(async () => {
     .delete(organization)
     .where(inArray(organization.id, [workspaceId, otherWorkspace]));
   if (userId) await db.delete(user).where(eq(user.id, userId));
+  await authThrottlePool.end();
   await pool.end();
 });
 
@@ -575,3 +579,6 @@ describe("manual findings with real sessions and PostgreSQL", () => {
     }
   });
 });
+
+// Authentication uses one local bucket, so each test starts with a fresh budget.
+beforeEach(resetAuthRateLimits);
