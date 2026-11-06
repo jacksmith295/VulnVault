@@ -132,6 +132,83 @@ async function saved(pool: Pool, id: string) {
   ).rows[0];
 }
 
+for (const operation of ["menu", "drag", "failed drag"] as const) {
+  test(`mobile selected column survives ${operation} refresh`, async ({
+    page,
+    context,
+  }) => {
+    const owner = await verifiedAccount(context);
+    const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+    const data = await fixture(page, pool);
+    try {
+      const moved = await finding(pool, data.service, "Selected column move");
+      const remaining = await finding(pool, data.service, "Remaining triaged finding");
+      await pool.query(
+        "UPDATE finding SET status='triaged' WHERE id=ANY($1::text[])",
+        [[moved, remaining]],
+      );
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.goto(data.path);
+      const triaged = page.getByRole("tab", { name: /^Triaged \(/u });
+      await triaged.click();
+      await expect(handle(page, "Selected column move")).toBeEnabled();
+      if (operation === "failed drag") {
+        let aborted = false;
+        await page.route(`**${data.path}`, async (route) => {
+          if (
+            !aborted &&
+            route.request().method() === "POST" &&
+            route.request().headers()["next-action"]
+          ) {
+            aborted = true;
+            await route.abort("failed");
+          } else await route.continue();
+        });
+      }
+      if (operation === "menu") {
+        await page.getByRole("button", {
+          name: "Change status for Selected column move",
+          exact: true,
+        }).click();
+        await page.getByRole("menuitem", { name: "Resolved", exact: true }).click();
+      } else {
+        await startDrag(page, "Selected column move");
+        const end = await center(target(page, "resolved", true));
+        await page.mouse.move(end.x, end.y, { steps: 15 });
+        await page.mouse.up();
+      }
+      if (operation === "failed drag") {
+        await expect(page.getByRole("main").getByRole("alert")).toContainText(
+          "Selected column move:",
+        );
+        // Enabled controls prove the authoritative refresh released the gate.
+        await expect(handle(page, "Selected column move")).toBeEnabled();
+        expect((await saved(pool, moved)).status).toBe("triaged");
+      } else {
+        await expect(page.getByText("Selected column move moved to Resolved.", {
+          exact: true,
+        })).toBeFocused();
+        await expect(page.getByRole("link", {
+          name: "Selected column move",
+          exact: true,
+        })).not.toBeVisible();
+        expect((await saved(pool, moved)).status).toBe("resolved");
+      }
+      await expect(triaged).toHaveAttribute("aria-selected", "true");
+      await expect(triaged).toHaveText(
+        operation === "failed drag" ? "Triaged (2)" : "Triaged (1)",
+      );
+      await expect(page.getByRole("link", {
+        name: "Remaining triaged finding",
+        exact: true,
+      })).toBeVisible();
+      await expect(handle(page, "Remaining triaged finding")).toBeEnabled();
+    } finally {
+      await cleanup(pool, data, owner.id);
+    }
+  });
+}
+
 for (const motion of ["no-preference", "reduce"] as const) {
   test(`compact cards lift without a copy or gap and cancel safely with ${motion} motion`, async ({
     page,

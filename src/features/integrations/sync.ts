@@ -380,6 +380,8 @@ export async function syncMapping(
 export async function runNextSync(
   workspaceSlug?: string,
 ): Promise<SyncResult | null> {
+  const appId = process.env.GITHUB_APP_ID;
+  if (!appId) return null;
   const candidates = await db
     .select({ id: integrationRepository.id })
     .from(integrationRepository)
@@ -396,6 +398,7 @@ export async function runNextSync(
       and(
         eq(integrationRepository.enabled, true),
         eq(workspaceIntegration.enabled, true),
+        eq(workspaceIntegration.appId, appId),
         isNull(service.archivedAt),
         lte(integrationRepository.nextAttemptAt, sql`now()`),
         or(

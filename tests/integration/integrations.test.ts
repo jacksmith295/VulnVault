@@ -283,6 +283,110 @@ afterAll(async () => {
 });
 
 describe("Dependabot tenant isolation and fenced persistence", () => {
+  it.each([
+    ["integration", "statement"],
+    ["integration", "commit"],
+    ["repository", "statement"],
+    ["repository", "commit"],
+  ])("returns a safe error and rolls back %s changes on %s failure", async (target, failure) => {
+    await db
+      .update(integrationRepository)
+      .set({
+        leaseToken: randomUUID(),
+        leaseExpiresAt: new Date(Date.now() + 120_000),
+      })
+      .where(eq(integrationRepository.id, mappingId));
+    const beforeGrant = await grant();
+    const beforeMapping = await mapping();
+    const identifier = `integration_failure_${randomUUID().replaceAll("-", "")}`;
+    // Fail after the write, including at COMMIT, so the production transaction must roll back.
+    await pool.query(`CREATE FUNCTION ${identifier}() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN RAISE EXCEPTION 'test-only private database failure'; END;
+    $$`);
+    try {
+      await pool.query(`CREATE ${failure === "commit" ? "CONSTRAINT " : ""}TRIGGER ${identifier}
+        AFTER UPDATE ON integration_repository
+        ${failure === "commit" ? "DEFERRABLE INITIALLY DEFERRED" : ""}
+        FOR EACH ROW WHEN (NEW.id = '${mappingId}') EXECUTE FUNCTION ${identifier}()`);
+      const result =
+        target === "integration"
+          ? await setIntegrationEnabled(
+              slug, integrationId, beforeGrant.version, false,
+            )
+          : await setRepositoryEnabled(
+              slug, mappingId, beforeMapping.version, false,
+            );
+      expect(result).toEqual({
+        error: "Unable to update this connection. Reload and try again.",
+      });
+      expect(await grant()).toEqual(beforeGrant);
+      expect(await mapping()).toEqual(beforeMapping);
+    } finally {
+      await pool.query(
+        `DROP TRIGGER IF EXISTS ${identifier} ON integration_repository`,
+      );
+      await pool.query(`DROP FUNCTION ${identifier}()`);
+    }
+  });
+  it("polls the current App even with ten older due mappings for a previous App", async () => {
+    const previousGrant = randomUUID();
+    const previousLinks = Array.from({ length: 10 }, () => randomUUID());
+    await db.insert(workspaceIntegration).values({
+      id: previousGrant,
+      workspaceId,
+      appId: "999",
+      installationId: String(Math.floor(Math.random() * 1e12) + 1),
+      accountId: String(Math.floor(Math.random() * 1e12) + 1),
+      accountLogin: "previous-account",
+      accountType: "Organization",
+    });
+    try {
+      await db.insert(serviceRepository).values(
+        previousLinks.map((id, index) => ({
+          id,
+          serviceId,
+          url: `https://github.com/previous/repository-${index}`,
+        })),
+      );
+      await db.insert(integrationRepository).values(
+        previousLinks.map((id, index) => ({
+          id: randomUUID(),
+          workspaceId,
+          integrationId: previousGrant,
+          serviceId,
+          repositoryLinkId: id,
+          repositoryId: String(1000 + index),
+          fullName: `previous/repository-${index}`,
+          nextAttemptAt: new Date(Date.now() - 86_400_000),
+        })),
+      );
+      upstream.getRepository.mockClear();
+      upstream.listAlerts.mockClear();
+      expect(await runNextSync(slug)).toMatchObject({
+        status: "success", imported: 1,
+      });
+      expect(upstream.getRepository).toHaveBeenCalledExactlyOnceWith(
+        installation.id, { id: repository.id },
+      );
+      expect(upstream.listAlerts).toHaveBeenCalledTimes(1);
+      expect((await mapping()).lastSuccessAt).not.toBeNull();
+      const previous = await db
+        .select()
+        .from(integrationRepository)
+        .where(eq(integrationRepository.integrationId, previousGrant));
+      expect(previous).toHaveLength(10);
+      expect(previous.every(
+        (row) => row.lastAttemptAt === null && row.leaseToken === null,
+      )).toBe(true);
+    } finally {
+      await db.delete(integrationRepository)
+        .where(eq(integrationRepository.integrationId, previousGrant));
+      await db.delete(workspaceIntegration)
+        .where(eq(workspaceIntegration.id, previousGrant));
+      await db.delete(serviceRepository)
+        .where(inArray(serviceRepository.id, previousLinks));
+    }
+  });
   it("requires verified sessions and owner/admin role for every browser management operation", async () => {
     const operations = () => [
       () => getIntegrationPageData(slug),

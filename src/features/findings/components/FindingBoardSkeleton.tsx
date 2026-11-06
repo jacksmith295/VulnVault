@@ -46,7 +46,7 @@ export function FindingBoardSkeleton({
       )}
       <Stack grow>
         <StatusBoard
-          initialStatus={initialStatus}
+          selectedStatus={initialStatus}
           columns={statuses.map((status) => ({
             status,
             label: statusLabels[status],

@@ -24,15 +24,15 @@ Last reviewed on 2026-11-06 against `d8c2fa7`. Lint, TypeScript, production buil
 
 ### 1. Reliability fixes
 
-The immediate next action is a focused reliability PR addressing five review findings:
+Implemented on the reliability branch; awaiting merge. After this slice is merged, start slice 2 with a minimal CI verification PR.
 
-- Keep continuous polling alive after a database failure within an iteration, with delayed retry and safe feedback. Preserve nonzero failure exit for `--once`. Regressions must distinguish recovery in continuous mode from one-shot failure.
-- Filter due mappings by the configured App ID before applying the batch limit of ten. Verify mappings from a previous App cannot starve eligible work.
-- Preserve the selected mobile status tab after a status mutation refreshes the board. Cover both menu and drag workflows without silently returning to New.
-- Return recoverable form feedback when an integration enable/disable transaction fails. Verify the page remains usable and reports failure without claiming a successful toggle.
-- Clear the selected service repository after a successful connection removes it from the available options while other links remain. Verify a subsequent action uses a current selection.
+- Continuous polling retries unexpected database failures with safe feedback; `--once` still drains successful jobs and exits nonzero on failure.
+- Candidate selection filters by the configured App ID before the ten-row limit, so previous-App mappings cannot starve eligible work.
+- Mobile status selection survives successful and failed mutation refreshes while the paginated collection still resets.
+- Integration toggle transaction and commit failures roll back and return recoverable form feedback.
+- Repository selections clear when removed from available options, while valid drafts survive unrelated refreshes.
 
-Add meaningful regression coverage for each outcome and retain existing permission, concurrency, and data-preservation checks.
+Worker, PostgreSQL, and browser regressions cover these outcomes alongside existing permission, concurrency, and data-preservation checks. Verification results belong in the PR.
 
 ### 2. Repeatable verification and safe diagnostics
 

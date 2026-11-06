@@ -2,7 +2,6 @@
 
 import { Tabs } from "@base-ui/react/tabs";
 import {
-  useState,
   useSyncExternalStore,
   type ComponentProps,
   type ReactNode,
@@ -38,7 +37,8 @@ function ColumnHeading({ label }: { label: string }) {
 
 export function StatusBoard({
   columns,
-  initialStatus,
+  selectedStatus,
+  onStatusChange,
 }: {
   columns: {
     status: string;
@@ -46,9 +46,9 @@ export function StatusBoard({
     regionLabel: string;
     content: ReactNode;
   }[];
-  initialStatus: string;
+  selectedStatus: string;
+  onStatusChange?: (status: string) => void;
 }) {
-  const [selected, setSelected] = useState(initialStatus);
   const { dragging, disabled } = useBoardDrag();
   const desktop = useSyncExternalStore(
     subscribeDesktop,
@@ -57,8 +57,8 @@ export function StatusBoard({
   );
   return (
     <Tabs.Root
-      value={selected}
-      onValueChange={(value) => setSelected(String(value))}
+      value={selectedStatus}
+      onValueChange={(value) => onStatusChange?.(String(value))}
       className="flex min-w-0 flex-1 flex-col"
       render={
         <div
@@ -98,6 +98,7 @@ export function StatusBoard({
           <Tabs.Tab
             key={column.status}
             value={column.status}
+            disabled={!onStatusChange}
             className="min-h-10 shrink-0 rounded-md px-3 text-sm font-medium outline-hidden focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-2 focus-visible:outline-ring data-active:bg-card data-active:text-primary data-active:shadow-sm"
           >
             {column.label}
@@ -116,7 +117,7 @@ export function StatusBoard({
             aria-label={column.regionLabel}
             className={cn(
               "min-h-80 min-w-0 flex-col overflow-hidden rounded-xl border bg-muted/40 outline-hidden focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-2 focus-visible:outline-ring",
-              selected === column.status ? "flex" : "hidden xl:flex",
+              selectedStatus === column.status ? "flex" : "hidden xl:flex",
             )}
           >
             <BoardDropTarget

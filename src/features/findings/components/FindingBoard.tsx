@@ -57,6 +57,10 @@ export function FindingBoard({
   // Server refreshes replace loaded pages, while action feedback survives the response.
   const [feedback, setFeedback] = useState<StatusFeedback>();
   const [mutation, setMutation] = useState<Mutation>();
+  // Keep the mobile column while refreshed data resets the paginated collection.
+  const [selectedStatus, setSelectedStatus] = useState<string>(
+    props.filters.status ?? "new",
+  );
   const gate = useRef(false);
   const mounted = useRef(true);
   const [refreshing, startRefresh] = useTransition();
@@ -169,6 +173,8 @@ export function FindingBoard({
       <FindingBoardCollection
         key={revisionKey}
         {...props}
+        selectedStatus={selectedStatus}
+        onStatusChange={setSelectedStatus}
         pending={pending || refreshing || conflict}
         changeStatus={changeStatus}
       />
@@ -243,9 +249,13 @@ function FindingBoardCollection({
   scopeKey,
   pending,
   changeStatus,
+  selectedStatus,
+  onStatusChange,
 }: BoardProps & {
   pending: boolean;
   changeStatus: StatusChange;
+  selectedStatus: string;
+  onStatusChange: (status: string) => void;
 }) {
   const router = useRouter();
   const [columns, setColumns] = useState(initialColumns);
@@ -371,7 +381,8 @@ function FindingBoardCollection({
       }}
     >
       <StatusBoard
-        initialStatus={filters.status ?? "new"}
+        selectedStatus={selectedStatus}
+        onStatusChange={onStatusChange}
         columns={columns.map((column) => ({
           status: column.status,
           label: `${statusLabels[column.status]} (${column.total})`,
