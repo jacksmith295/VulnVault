@@ -129,7 +129,11 @@ test("routine pages use bounded content and wrap long text at mobile widths", as
           exact: true,
         });
         await control.click();
-        const option = page.getByRole("option", {
+        await expect(control).toHaveAttribute("aria-expanded", "true");
+        const listId = await control.getAttribute("aria-controls");
+        expect(listId).toBeTruthy();
+        // A previous popup can still be fading out; inspect this control's active list.
+        const option = page.locator(`id=${listId}`).getByRole("option", {
           name: longName,
           exact: true,
         });

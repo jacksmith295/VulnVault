@@ -828,8 +828,15 @@ test("mobile filters use a draft-preserving drawer and release focus on desktop 
     await expect(dialog).toBeVisible();
     await expect(severity).toBeFocused();
     await severity.press("ArrowDown");
+    await expect(page.getByRole("listbox")).toBeVisible();
     await page.keyboard.press("Home");
+    await expect(
+      page.getByRole("option", { name: "All severities", exact: true }),
+    ).toHaveAttribute("data-highlighted", "");
     await page.keyboard.press("ArrowDown");
+    await expect(
+      page.getByRole("option", { name: "Critical", exact: true }),
+    ).toHaveAttribute("data-highlighted", "");
     await page.keyboard.press("Enter");
     await expect(severity).toContainText("Critical");
     await severity.press("Tab");
@@ -849,6 +856,30 @@ test("mobile filters use a draft-preserving drawer and release focus on desktop 
       path: test.info().outputPath("filters-mobile-dark.png"),
       fullPage: true,
     });
+    const drawerTitle = page.getByRole("heading", {
+      name: "Finding filters",
+      exact: true,
+    });
+    await drawerTitle.hover();
+    const titleBounds = (await drawerTitle.boundingBox())!;
+    const settledX = (await dialog.boundingBox())!.x;
+    await page.mouse.move(titleBounds.x + 10, titleBounds.y + 10);
+    await page.mouse.down();
+    await page.mouse.move(titleBounds.x + 90, titleBounds.y + 10, { steps: 6 });
+    await expect(dialog).toHaveAttribute("data-swiping", "");
+    expect(
+      await dialog.evaluate(
+        (element) => getComputedStyle(element).transitionDuration,
+      ),
+    ).toBe("0s");
+    expect((await dialog.boundingBox())!.x).toBeGreaterThan(settledX + 20);
+    await page.mouse.move(titleBounds.x + 10, titleBounds.y + 10, { steps: 6 });
+    await page.mouse.up();
+    await expect(dialog).toBeVisible();
+    await expect
+      .poll(async () => (await dialog.boundingBox())!.x)
+      .toBeLessThan(settledX + 1);
+    await expect(severity).toContainText("Critical");
     await blocker.query("BEGIN");
     await blocker.query(
       "SET LOCAL idle_in_transaction_session_timeout = '20s'",
@@ -885,6 +916,15 @@ test("mobile filters use a draft-preserving drawer and release focus on desktop 
     await trigger.click();
     await expect(severity).toContainText("Critical");
     await selectFilter(page, "Severity", "High");
+    await drawerTitle.hover();
+    const swipe = (await drawerTitle.boundingBox())!;
+    await page.mouse.move(swipe.x + 10, swipe.y + 10);
+    await page.mouse.down();
+    await page.mouse.move(swipe.x + 250, swipe.y + 10, { steps: 8 });
+    await page.mouse.up();
+    await expect(dialog).not.toBeVisible();
+    await trigger.click();
+    await expect(severity).toContainText("High");
     await page.setViewportSize({ width: 1023, height: 900 });
     await expect(dialog).toBeVisible();
     await page.setViewportSize({ width: 1024, height: 900 });
@@ -920,6 +960,217 @@ test("mobile filters use a draft-preserving drawer and release focus on desktop 
   } finally {
     await blocker.query("ROLLBACK");
     blocker.release();
+    await cleanup(pool, fixture, [owner.id]);
+  }
+});
+
+async function motionSamples(
+  locator: import("@playwright/test").Locator,
+  property: string,
+) {
+  await expect
+    .poll(
+      () =>
+        locator.evaluate(
+          (element, property) =>
+            element
+              .getAnimations()
+              .some(
+                (animation) =>
+                  animation instanceof CSSTransition &&
+                  animation.transitionProperty === property,
+              ),
+          property,
+        ),
+      { timeout: 5_000, intervals: [16, 32, 64] },
+    )
+    .toBe(true);
+  return locator.evaluate((element, property) => {
+    const animation = element
+      .getAnimations()
+      .find(
+        (item) =>
+          item instanceof CSSTransition && item.transitionProperty === property,
+      );
+    if (!animation?.effect)
+      throw new Error(`Expected an actual ${property} transition.`);
+    animation.pause();
+    const duration = Number(animation.effect.getTiming().duration);
+    const sample = () => ({
+      x: element.getBoundingClientRect().x,
+      width: element.getBoundingClientRect().width,
+      opacity: Number(getComputedStyle(element).opacity),
+      scale: parseFloat(getComputedStyle(element).scale) || 1,
+    });
+    animation.currentTime = duration * 0.1;
+    const start = sample();
+    animation.currentTime = duration * 0.9;
+    return { duration, start, end: sample() };
+  }, property);
+}
+
+async function finishMotion(page: Page) {
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
+  await page.evaluate(() => {
+    for (const animation of document.getAnimations()) {
+      if (animation.effect?.getTiming().iterations !== Infinity)
+        animation.finish();
+    }
+  });
+}
+
+test("overlays animate in and out without delaying reduced-motion interactions", async ({
+  page,
+  context,
+}) => {
+  page.setDefaultTimeout(5_000);
+  const owner = await verifiedAccount(context);
+  const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+  const fixture = await workspaceFixture(page, pool);
+  const popup = page.locator('[role="dialog"]');
+  const trigger = page.getByRole("button", { name: /^Filters \(/u });
+  try {
+    await finding(pool, fixture.primary, "Motion check");
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    // Pause overlay transitions when they start so entry and exit can be sampled deterministically.
+    await page.addInitScript(() => {
+      document.addEventListener("transitionrun", (event) => {
+        const target = event.target;
+        if (
+          !(target instanceof HTMLElement) ||
+          !target.matches(
+            '[role="dialog"], [role="menu"], [role="presentation"]',
+          )
+        )
+          return;
+        for (const animation of target.getAnimations()) {
+          if (
+            animation instanceof CSSTransition &&
+            ["transform", "opacity", "scale"].includes(
+              animation.transitionProperty,
+            )
+          )
+            animation.pause();
+        }
+      });
+    });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(fixture.path);
+    await expect(
+      page.getByRole("link", { name: "Motion check", exact: true }),
+    ).toBeVisible();
+    await trigger.click();
+    const backdrop = page.locator(
+      '[role="presentation"][style*="--drawer-swipe-progress"]',
+    );
+    const backdropEnter = await motionSamples(backdrop, "opacity");
+    expect(backdropEnter.end.opacity).toBeGreaterThan(
+      backdropEnter.start.opacity,
+    );
+    const entering = await motionSamples(popup, "transform");
+    expect(entering.duration).toBeGreaterThan(0);
+    expect(entering.duration).toBeLessThanOrEqual(300);
+    expect(entering.end.x).toBeLessThan(entering.start.x);
+    expect(entering.end.width).toBeCloseTo(entering.start.width, 2);
+    await finishMotion(page);
+    await page.getByRole("button", { name: "Close", exact: true }).click();
+    await expect(popup).toHaveCount(1);
+    const backdropExit = await motionSamples(backdrop, "opacity");
+    expect(backdropExit.end.opacity).toBeLessThan(backdropExit.start.opacity);
+    const exiting = await motionSamples(popup, "transform");
+    expect(exiting.end.x).toBeGreaterThan(exiting.start.x);
+    // Reopen during a retained exit to catch stale unmount/focus callbacks.
+    await page
+      .getByRole("button", { name: /^Filters \(/u, includeHidden: true })
+      .evaluate((element) => (element as HTMLButtonElement).click());
+    await finishMotion(page);
+    await expect(popup).toBeVisible();
+    await page.getByRole("button", { name: "Close", exact: true }).click();
+    await finishMotion(page);
+    await expect(popup).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+
+    await page.getByRole("button", { name: "Theme", exact: true }).click();
+    const menu = page.locator('[role="menu"]');
+    const menuFade = await motionSamples(menu, "opacity");
+    expect(menuFade.end.opacity).toBeGreaterThan(menuFade.start.opacity);
+    const menuScale = await motionSamples(menu, "scale");
+    expect(menuScale.end.scale).toBeGreaterThan(menuScale.start.scale);
+    await finishMotion(page);
+    await page
+      .getByRole("button", { name: "Theme", exact: true, includeHidden: true })
+      .evaluate((element) => (element as HTMLButtonElement).click());
+    const menuExit = await motionSamples(menu, "opacity");
+    expect(menuExit.end.opacity).toBeLessThan(menuExit.start.opacity);
+    const menuScaleExit = await motionSamples(menu, "scale");
+    expect(menuScaleExit.end.scale).toBeLessThan(menuScaleExit.start.scale);
+    await finishMotion(page);
+    await expect(menu).toHaveCount(0);
+
+    await trigger.click();
+    await finishMotion(page);
+    await page.getByRole("combobox", { name: "Severity", exact: true }).click();
+    const selectPopup = page
+      .getByRole("listbox", { includeHidden: true })
+      .locator("..");
+    const selectFade = await motionSamples(selectPopup, "opacity");
+    expect(selectFade.end.opacity).toBeGreaterThan(selectFade.start.opacity);
+    const selectScale = await motionSamples(selectPopup, "scale");
+    expect(selectScale.end.scale).toBeGreaterThan(selectScale.start.scale);
+    await finishMotion(page);
+    await page.keyboard.press("Escape");
+    const selectExit = await motionSamples(selectPopup, "opacity");
+    expect(selectExit.end.opacity).toBeLessThan(selectExit.start.opacity);
+    const selectScaleExit = await motionSamples(selectPopup, "scale");
+    expect(selectScaleExit.end.scale).toBeLessThan(selectScaleExit.start.scale);
+    await finishMotion(page);
+    await expect(popup).toBeVisible();
+    await page.keyboard.press("Escape");
+    await finishMotion(page);
+    await expect(popup).toHaveCount(0);
+
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await trigger.click();
+    await expect(popup).toBeVisible();
+    const reduced = await popup.evaluate((element) => ({
+      transform: getComputedStyle(element).transform,
+      opacity: Number(getComputedStyle(element).opacity),
+      animations: element
+        .getAnimations()
+        .filter(
+          (animation) => Number(animation.effect?.getTiming().duration) > 1,
+        ).length,
+    }));
+    expect(reduced.opacity).toBe(1);
+    expect(reduced.animations).toBe(0);
+    expect(
+      reduced.transform === "none" ||
+        reduced.transform === "matrix(1, 0, 0, 1, 0, 0)",
+    ).toBe(true);
+    await page.getByRole("combobox", { name: "Severity", exact: true }).click();
+    await expect(
+      page.getByRole("option", { name: "Critical", exact: true }),
+    ).toBeVisible();
+    expect(
+      await selectPopup.evaluate(
+        (element) =>
+          element
+            .getAnimations()
+            .filter(
+              (animation) => Number(animation.effect?.getTiming().duration) > 1,
+            ).length,
+      ),
+    ).toBe(0);
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("Escape");
+    await expect(popup).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+  } finally {
     await cleanup(pool, fixture, [owner.id]);
   }
 });

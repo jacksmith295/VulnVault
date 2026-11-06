@@ -42,10 +42,10 @@ export function ResponsiveFilters({
           </Drawer.Trigger>
         </MobileFilters>
         <Drawer.Portal>
-          <Drawer.Backdrop className="fixed inset-0 z-40 bg-foreground/30" />
+          <Drawer.Backdrop className="fixed inset-0 z-40 bg-foreground/30 opacity-[calc(1-var(--drawer-swipe-progress,0))] motion-safe:transition-opacity motion-safe:duration-(--motion-duration-panel) motion-safe:ease-(--motion-ease-out) motion-safe:data-starting-style:opacity-0 motion-safe:data-ending-style:opacity-0 data-swiping:duration-0" />
           <Drawer.Viewport className="fixed inset-0 z-40 flex justify-end">
             <Drawer.Popup
-              className="flex h-dvh w-full max-w-sm flex-col overflow-y-auto border-l bg-background p-4 shadow-xl outline-none"
+              className="flex h-dvh w-full max-w-sm flex-col overflow-y-auto border-l bg-background p-4 shadow-xl outline-none [transform:translateX(var(--drawer-swipe-movement-x,0px))] motion-safe:transition-transform motion-safe:duration-[calc(var(--motion-duration-panel)*var(--drawer-swipe-strength,1))] motion-safe:ease-(--motion-ease-out) motion-safe:data-starting-style:[transform:translateX(100%)] motion-safe:data-ending-style:[transform:translateX(100%)] data-swiping:duration-0"
               finalFocus={() => {
                 // A resized desktop must not return focus to the hidden mobile trigger.
                 if (window.matchMedia("(min-width: 1024px)").matches)

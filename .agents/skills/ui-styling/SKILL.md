@@ -28,6 +28,13 @@ description: Build or change VulnVault pages, forms, shared components, styling,
 - Match content width to its task: keep dense boards fluid, bound inventory pages, align form headings with fields, and limit prose line length. Use compact list/grid variants instead of stretching short cards. On small screens, move secondary controls such as board filters into accessible Base UI drawers when that exposes the primary work sooner. Keep drafts outside overlays; close open overlays on desktop breakpoint changes, release scroll locks, and return focus to a visible control. Test both sides of every responsive breakpoint.
 - Use available application width for dense work views. Keep readable form widths where useful. Prefer CSS-responsive layout that has the same initial geometry before and after hydration; avoid rendering a mobile layout on the server and replacing it with a desktop layout on mount.
 
+## Motion
+
+- Consider motion when adding or changing interactive elements. Use it to explain opening, closing, selection, and feedback. Drawers should slide from their attached edge; floating menus and selects can use a short fade/scale. Keep static content and dense work views still unless movement communicates a useful change.
+- Define timing and easing in shared theme tokens and apply motion in shared component definitions. Prefer short, restrained transform/opacity transitions and focused control-state transitions. Avoid `transition-all`, animated layout dimensions, decorative page/card entrance sequences, and new animation dependencies without a demonstrated need.
+- Follow the installed Base UI lifecycle and gesture variables for entrance and exit states. Preserve overlay mounting through exit, focus return, dismissal, scroll unlocking, and rapid reopen behaviour. Keep control state outside animated overlays and never delay validation or authorisation feedback for an animation.
+- Respect `prefers-reduced-motion`: remove nonessential movement and finish state changes promptly. Verify actual entrance and exit movement with normal motion, plus reduced-motion completion, keyboard/nested overlays, rapid toggles, and breakpoint changes. CSS class presence alone does not prove an animation works.
+
 ## Preserve behaviour and accessibility
 
 - Preserve form field names, values, refs, events, autocomplete, required state, and error associations. Keep the existing validation schemas and server validation authoritative.

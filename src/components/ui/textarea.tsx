@@ -21,7 +21,7 @@ export function Textarea({
       disabled={disabled}
       render={<textarea ref={ref} {...props} />}
       className={cn(
-        "min-h-32 w-full min-w-0 resize-y rounded-lg border border-input bg-card px-3 py-2 text-base outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-60 aria-invalid:border-destructive md:text-sm",
+        "min-h-32 w-full min-w-0 resize-y rounded-lg border border-input bg-card px-3 py-2 text-base motion-safe:transition-[color,background-color,border-color,box-shadow,opacity] motion-safe:duration-(--motion-duration-fast) motion-safe:ease-(--motion-ease-out) outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-60 aria-invalid:border-destructive md:text-sm",
         className,
       )}
     />
