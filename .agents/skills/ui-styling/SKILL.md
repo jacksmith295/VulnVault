@@ -1,59 +1,55 @@
 ---
 name: ui-styling
-description: Build or change VulnVault pages, forms, shared components, styling, and themes. Use for UI implementation and presentation refactoring that must follow the shared component architecture and preserve existing behaviour.
+description: Build or change VulnVault pages, forms, shared components, styling, and themes while preserving the shared component architecture and existing behaviour.
 ---
 
 # UI and styling
 
-## Establish the scope
+## Shared architecture
 
-- Read the UI rules in the root `AGENTS.md`. Read [the UI foundation plan](../../../docs/ui-foundation-plan.md) for component responsibilities and form regression requirements. Its proposal and migration sections describe completed work.
-- Inspect the existing shared components before adding a component. Add only the components and variants required by the agreed change.
-- Keep authorised data loading in `src/app` routes. Keep domain presentation in `src/features/*/components`.
+Inspect existing shared components before adding only the components or variants the agreed change needs.
 
-## Compose shared components
+- Keep authorised data loading and composition in `src/app`; domain presentation and interaction belong in `src/features/*/components`.
+- Pages and features compose reusable TSX components. Shared `src/components/ui` and `src/components/layout` definitions own semantic HTML, Tailwind classes, and repeated page/form structure. The root document layout may contain its required `html` and `body`.
+- Reuse styled interactive wrappers in `components/ui`; build new ones on installed Base UI primitives for keyboard, focus, and dismissal behaviour. Keep layout/text components server-compatible and add client boundaries only for interaction.
+- Expose typed variants for presentation differences instead of cosmetic `className` overrides in pages or features. Keep semantic theme tokens in `src/app/globals.css`.
+- Preserve the green identity in both themes and the existing provider's persisted System, Light, and Dark preferences. Reuse severity badges/tokens consistently with visible labels; colour alone must not convey risk.
 
-- Pages and feature components must compose reusable TSX components. Put semantic HTML in shared UI and layout definitions. The root document layout may contain its required `html` and `body` elements.
-- Reuse styled wrappers from `src/components/ui` for interactive controls. Build new interactive wrappers on the installed Base UI primitives. Use the primitives for focus, keyboard input, and dismissal behaviour.
-- Put repeated page and form structure in `src/components/layout`. Keep shared layout and text components compatible with server rendering. Add client boundaries where interaction requires them.
-- Put Tailwind classes in shared component definitions. Expose typed variants for differences in size, tone, or layout. Do not add cosmetic `className` overrides to pages or feature components.
-- Put theme values in semantic tokens in `src/app/globals.css`. Preserve the green application identity in light and dark themes. Use the existing theme provider and persisted system, light, and dark preference.
-- Use the shared severity badge and semantic severity tokens consistently across finding views. Keep severity labels visible and verify both palettes; do not reuse the application accent for every risk level or rely on colour alone.
+## State, loading, and layout
 
-## Loading, navigation, and available space
+- Use Suspense and reusable skeletons for asynchronous page/section reads. Await the read inside the suspended child so its fallback can appear. After initial loading, keep stable controls mounted and suspend refreshed results only.
+- Retain useful geometry through loading, empty, and error states. Match skeletons to the responsive content footprint; avoid collapsed results and hydration layout shifts. Prefer CSS-responsive layouts over replacing the server tree after mount.
+- Match width to the task: fluid dense work views, bounded inventories/forms, readable prose. Preserve client filter navigation, pending feedback, scroll position, and URL synchronization including Clear and Back/Forward.
+- Preserve action payloads, URLs, confirmation values, validation schemas, and authoritative server validation. Presentation changes must preserve authentication, permissions, and service/finding lifecycle rules.
+- Preserve field names, values, refs/events, autocomplete, required state, and error associations. Keep dirty values and their original version token together across theme changes and refreshed props; preserve component identity. For service forms retain the workspace-slug plus service-ID/new-service key.
 
-- Use React Suspense with reusable skeleton components for asynchronous page and section reads. Put the awaited data read inside the suspended child; a boundary added after the read cannot provide a loading fallback.
-- Scope Suspense boundaries to the content being refreshed. After initial loading, keep filter panels and other stable controls mounted while result sections load. Use section skeletons for results; reserve whole-panel skeletons for initial loading. Preserve selections and pending feedback, and synchronize controls with URL changes such as Clear and browser Back/Forward.
-- Match skeleton geometry to the loaded layout, including filters, board columns, and responsive heights. Loading, empty, and error states should retain the section's footprint instead of collapsing and moving surrounding content.
-- Use client navigation for filters and preserve scroll position. Provide pending feedback while the requested URL loads. Do not clear a populated board into a zero-height state between filter results.
-- Match content width to its task: keep dense boards fluid, bound inventory pages, align form headings with fields, and limit prose line length. Use compact list/grid variants instead of stretching short cards. On small screens, move secondary controls such as board filters into accessible Base UI drawers when that exposes the primary work sooner. Keep drafts outside overlays; close open overlays on desktop breakpoint changes, release scroll locks, and return focus to a visible control. Test both sides of every responsive breakpoint.
-- Use available application width for dense work views. Keep readable form widths where useful. Prefer CSS-responsive layout that has the same initial geometry before and after hydration; avoid rendering a mobile layout on the server and replacing it with a desktop layout on mount.
+## Interaction and accessibility
 
-## Motion
+- Target WCAG 2.2 AA. Preserve landmarks, heading levels, skip navigation, visible labels in accessible names, validation associations, password paste/autocomplete, real links for navigation, and buttons for actions. Avoid nested interactive elements.
+- Preserve keyboard operation, visible focus, and focus return. Keep focus clear of sticky headers. If an update removes or moves the focused item, announce the result and focus a stable meaningful target.
+- Check rendered contrast including hover/translucent surfaces: 4.5:1 normal text, 3:1 large text, and 3:1 essential control boundaries/state indicators. Decorative borders and disabled controls have exceptions. Keep focus outlines opaque, separated from filled controls, and visible in forced colours.
+- Maintain 24 CSS pixel targets or documented WCAG exceptions, 320 CSS pixel reflow, 200% text resizing, and text-spacing overrides without clipping.
+- Use purposeful, restrained motion in shared components with shared timing/easing tokens. Prefer transform/opacity and specific state transitions; avoid `transition-all`, animated layout dimensions, and decorative entrance sequences. Respect reduced motion by removing nonessential movement and completing changes promptly.
+- For overlays, preserve installed Base UI entrance/exit lifecycle and gesture behaviour, retained exit mounting, dismissal, focus return, scroll unlocking, and rapid reopen. Keep drafts/control state outside overlays and never delay validation or authorisation feedback for animation.
 
-- Consider motion when adding or changing interactive elements. Use it to explain opening, closing, selection, and feedback. Drawers should slide from their attached edge; floating menus and selects can use a short fade/scale. Keep static content and dense work views still unless movement communicates a useful change.
-- Define timing and easing in shared theme tokens and apply motion in shared component definitions. Prefer short, restrained transform/opacity transitions and focused control-state transitions. Avoid `transition-all`, animated layout dimensions, decorative page/card entrance sequences, and new animation dependencies without a demonstrated need.
-- Follow the installed Base UI lifecycle and gesture variables for entrance and exit states. Preserve overlay mounting through exit, focus return, dismissal, scroll unlocking, and rapid reopen behaviour. Keep control state outside animated overlays and never delay validation or authorisation feedback for an animation.
-- Respect `prefers-reduced-motion`: remove nonessential movement and finish state changes promptly. Verify actual entrance and exit movement with normal motion, plus reduced-motion completion, keyboard/nested overlays, rapid toggles, and breakpoint changes. CSS class presence alone does not prove an animation works.
-- On the findings board, lift a single tile without a visible source copy or placeholder gap. Use short transform-based sibling reflow while preserving DOM and server ordering. Cancel owned animations on cleanup. Keep action controls compact and omit idle instruction panels; pending and result feedback should describe actual activity.
+## Read details when the change needs them
 
-## Preserve behaviour and accessibility
+Read only the relevant sections. These documents also contain historical plans and verification results; those are context, not instructions to repeat completed migrations or expand the current scope.
 
-- Preserve form field names, values, refs, events, autocomplete, required state, and error associations. Keep the existing validation schemas and server validation authoritative.
-- Preserve action payloads, URLs, and confirmation values. Presentation changes must not change authentication, permissions, or service and finding lifecycle rules.
-- Preserve unsaved form values and their original version tokens together. Keep component identity stable across theme changes and refreshed server props. Retain the existing service form key, which includes the workspace slug and either the service ID or the new-service marker.
-- Preserve semantic landmarks and heading levels. Keep navigation as real links and actions as buttons. Do not nest links or buttons inside another interactive element.
-- Provide accessible labels and validation errors. Preserve keyboard operation, visible focus, and focus return after dismissing menus. Respect reduced motion.
-- Target WCAG 2.2 AA. Check rendered contrast, including translucent backgrounds and hover states: normal text needs 4.5:1, large text 3:1, and essential control boundaries and state indicators 3:1 against adjacent colours. Decorative borders and disabled controls have different requirements. Keep focus outlines opaque, separated from filled controls, and visible in forced-colors mode; do not rely on a faint background change for keyboard selection.
-- Include visible control text in its accessible name. Provide skip navigation to the main landmark and keep focused controls clear of sticky headers. After an update removes or moves the focused item, announce the result and move focus to a stable, meaningful target.
-- Ensure targets meet the 24 CSS pixel minimum or a documented WCAG exception. Preserve password paste and autocomplete. Check 320 CSS pixel reflow, 200% text resizing, and WCAG text-spacing overrides without clipped content or controls.
-- Drag interactions need a labelled handle, keyboard operation, announcements, visible destinations, and a non-drag alternative such as the existing status menu. Preserve ordinary touch scrolling outside handles. Cancel safely on Escape, invalid drops, scope changes and resizing, with visible focus recovery. Respect server-owned ordering, permissions, version checks and pending mutations; presentation feedback must not imply an unconfirmed save.
+- For component responsibilities or form refactors, consult [UI foundation: component layers and regression requirements](../../../docs/ui-foundation-plan.md#component-layers). Preserve external form validation and the original dirty-form version/identity contract.
+- For responsive layouts, filters, or drawers, read [responsive layout responsibilities and mobile board filters](../../../docs/responsive-ui-plan.md#page-and-component-responsibilities). This covers draft retention, same-URL Clear/history, hidden controls, nested overlays, breakpoint focus/scroll cleanup, and loading geometry. Consult its motion follow-up when changing transitions.
+- For findings board tiles or drag interactions, read [board interactions](../../../docs/board-interactions-plan.md). Preserve accessible keyboard/non-drag alternatives, safe cancellation, server-owned ordering/versions, the shared pending mutation gate, and truthful save feedback. Cancel owned animations on cleanup. Tile lift/reflow and drag-library cleanup mechanics apply to that board, not every UI component.
+- For accessibility changes or expanded checks, read [accessibility findings and verification limits](../../../docs/accessibility-review.md#findings-and-changes).
 
-## Verify the change
+## Verify the affected behaviour
 
-- Run lint and TypeScript checks. Use the root `AGENTS.md` verification rules to select the remaining application checks.
-- Check the affected screens at mobile and desktop widths in both themes. For theme changes, also check persistence, system preference changes, and switching themes with unsaved form input.
-- For changed controls, check keyboard operation and error feedback. For changed service forms, check that dirty input retains its original version token.
-- Use the existing axe Playwright coverage for representative routes and open overlay states in both themes. Supplement it with keyboard, focus, contrast, resizing, and spacing checks. Record automated results and manual limits separately; a passing axe scan does not establish full WCAG conformance or replace assistive-technology testing.
-- If browser checks cannot run, state that limit and list the manual checks still required.
-- Exercise delayed data and filter navigation, not only fast responses. Check skeleton-to-content geometry, scroll retention, and hydration stability. For dense boards, check that all columns fit at the intended desktop widths and that inactive mobile panels remain inaccessible to keyboard focus.
+Follow `AGENTS.md` for required application checks, including lint and TypeScript. Select visual and interaction checks for the behaviour at risk; this is not a full regression matrix for every edit. Check changed controls with keyboard and error feedback, and inspect affected mobile/desktop layouts in both themes when layout, styling, or theme behaviour changes.
+
+Choose additional checks by the change:
+
+- Themes/forms: preference persistence, system changes, dirty input with its original version, and stable component identity.
+- Loading/navigation/responsive layouts: delayed responses, skeleton geometry, scroll, hydration, history/Clear, and both sides of changed breakpoints.
+- Motion/overlays: actual entrance/exit movement, reduced-motion completion, nested keyboard operation, rapid toggles, and breakpoint cleanup. CSS class presence alone is insufficient.
+- Accessibility: use existing axe Playwright coverage for representative routes/open overlays; supplement with focus, contrast, resizing, and spacing checks. A passing axe scan does not establish full WCAG conformance or replace assistive-technology testing.
+
+Report automated results and manual limits separately. If browser checks cannot run, identify the concrete checks still needed.
