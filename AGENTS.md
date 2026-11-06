@@ -14,6 +14,7 @@ Development is local for now. Use the existing Next.js application and local Pos
 - Prefer sensible, extensible structures. Avoid speculative abstractions or enterprise infrastructure without a demonstrated need.
 - The user is learning frontend, backend, DevOps, and effective AI-assisted engineering. Explain key choices in the plan and final writeup.
 - Finish with what changed, why, verification results, and material limitations or follow-up decisions. Distinguish completed work from proposals.
+- Keep [the MVP roadmap](docs/mvp-plan.md) current when delivered scope, milestone status, or agreed priorities change; reconcile merged work before starting the next slice. Distinguish planned, implemented, and merged work. Keep concrete next steps and unresolved decisions short, linking detailed designs and verification instead of accumulating history.
 - Use plain language and avoid em dashes in authored prose and comments.
 
 ## Parallel implementation and review
