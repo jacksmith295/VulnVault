@@ -83,6 +83,12 @@ export function ConnectRepositoryForm({
   repositories: { id: string; serviceName: string; url: string }[];
 }) {
   const [repository, setRepository] = useState<string | null>(null);
+  const selectedRepository = repositories.some((item) => item.id === repository)
+    ? repository
+    : null;
+  // A successful connection removes its option. Clear only invalid drafts so
+  // unrelated server refreshes preserve a still available repository selection.
+  if (repository !== selectedRepository) setRepository(selectedRepository);
   const [state, action, pending] = useActionState(
     connectRepositoryAction.bind(null, slug, integrationId),
     { error: "" },
@@ -98,7 +104,7 @@ export function ConnectRepositoryForm({
         <Select
           id={id}
           name="repositoryLinkId"
-          value={repository}
+          value={selectedRepository}
           onValueChange={setRepository}
           options={repositories.map((item) => ({
             value: item.id,
@@ -109,7 +115,7 @@ export function ConnectRepositoryForm({
         />
       </FormField>
       <Stack gap="sm">
-        <Button type="submit" disabled={pending || repository === null}>
+        <Button type="submit" disabled={pending || selectedRepository === null}>
           {pending ? "Connecting..." : "Connect repository"}
         </Button>
         <ActionFeedback state={state} slug={slug} />

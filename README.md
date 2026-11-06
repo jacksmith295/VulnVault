@@ -105,7 +105,7 @@ The worker checks due repositories every ten seconds and schedules successful sy
 npm run integrations:worker -- --once --workspace <workspace-slug>
 ```
 
-One-shot failures return a nonzero exit status. Normal worker failures use a bounded delay; repository retry/backoff is persisted. Stop the worker with Ctrl-C. Repository status and safe failure messages are visible in Integrations; refresh the page to see background changes. Loaded boards refresh through normal navigation or reload; live push updates are outside this slice.
+One-shot runs drain successful due syncs until idle and return a nonzero exit status on failure. Continuous polling retries unexpected database/polling failures after ten seconds; invalid startup configuration still stops the command. Repository retry/backoff is persisted, and mappings for another GitHub App do not consume the polling batch. Stop the worker with Ctrl-C. Repository status and safe failure messages are visible in Integrations; refresh the page to see background changes. Loaded boards refresh through normal navigation or reload; live push updates are outside this slice.
 
 Only previously unseen **open** alerts create New findings. Later syncs refresh separate upstream metadata for open/fixed/dismissed/automatically dismissed alerts and preserve every locally editable field. They never automatically resolve, reopen, reject, delete, or overwrite findings. A missing alert or failed page does not imply remediation. Removing a service repository link stops its imports but retains its findings and source history; reconnecting does not duplicate alerts.
 

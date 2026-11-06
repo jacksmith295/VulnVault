@@ -97,24 +97,28 @@ export async function setIntegrationEnabled(
     typeof enabled !== "boolean"
   )
     return changed;
-  return db.transaction(async (tx) => {
-    const workspace = await lockAdmin(tx, slug, user.id, true);
-    if (!workspace) return unavailable;
-    const [updated] = await tx
-      .update(workspaceIntegration)
-      .set({ enabled, version: sql`${workspaceIntegration.version} + 1` })
-      .where(
-        and(
-          eq(workspaceIntegration.id, id),
-          eq(workspaceIntegration.workspaceId, workspace.id),
-          eq(workspaceIntegration.version, version),
-        ),
-      )
-      .returning();
-    if (!updated) return changed;
-    await invalidateMappings(tx, id);
-    return { ok: true, integrationId: id };
-  });
+  try {
+    return await db.transaction(async (tx) => {
+      const workspace = await lockAdmin(tx, slug, user.id, true);
+      if (!workspace) return unavailable;
+      const [updated] = await tx
+        .update(workspaceIntegration)
+        .set({ enabled, version: sql`${workspaceIntegration.version} + 1` })
+        .where(
+          and(
+            eq(workspaceIntegration.id, id),
+            eq(workspaceIntegration.workspaceId, workspace.id),
+            eq(workspaceIntegration.version, version),
+          ),
+        )
+        .returning();
+      if (!updated) return changed;
+      await invalidateMappings(tx, id);
+      return { ok: true, integrationId: id };
+    });
+  } catch {
+    return { error: "Unable to update this connection. Reload and try again." };
+  }
 }
 export async function setRepositoryEnabled(
   slug: string,
@@ -129,59 +133,63 @@ export async function setRepositoryEnabled(
     typeof enabled !== "boolean"
   )
     return changed;
-  return db.transaction(async (tx) => {
-    const workspace = await lockAdmin(tx, slug, user.id, true);
-    if (!workspace) return unavailable;
-    const [candidate] = await tx
-      .select()
-      .from(integrationRepository)
-      .where(
-        and(
-          eq(integrationRepository.id, id),
-          eq(integrationRepository.workspaceId, workspace.id),
-        ),
-      );
-    if (!candidate) return unavailable;
-    // Follow the same service, integration, mapping lock order used by workers.
-    await tx
-      .select({ id: service.id })
-      .from(service)
-      .where(
-        and(
-          eq(service.id, candidate.serviceId),
-          eq(service.workspaceId, workspace.id),
-        ),
-      )
-      .for("share");
-    await tx
-      .select({ id: workspaceIntegration.id })
-      .from(workspaceIntegration)
-      .where(
-        and(
-          eq(workspaceIntegration.id, candidate.integrationId),
-          eq(workspaceIntegration.workspaceId, workspace.id),
-        ),
-      )
-      .for("update");
-    const [updated] = await tx
-      .update(integrationRepository)
-      .set({
-        enabled,
-        version: sql`${integrationRepository.version} + 1`,
-        leaseToken: null,
-        leaseExpiresAt: null,
-        nextAttemptAt: sql`now()`,
-      })
-      .where(
-        and(
-          eq(integrationRepository.id, id),
-          eq(integrationRepository.workspaceId, workspace.id),
-          eq(integrationRepository.version, version),
-        ),
-      )
-      .returning();
-    return updated ? { ok: true, mappingId: id } : changed;
-  });
+  try {
+    return await db.transaction(async (tx) => {
+      const workspace = await lockAdmin(tx, slug, user.id, true);
+      if (!workspace) return unavailable;
+      const [candidate] = await tx
+        .select()
+        .from(integrationRepository)
+        .where(
+          and(
+            eq(integrationRepository.id, id),
+            eq(integrationRepository.workspaceId, workspace.id),
+          ),
+        );
+      if (!candidate) return unavailable;
+      // Follow the same service, integration, mapping lock order used by workers.
+      await tx
+        .select({ id: service.id })
+        .from(service)
+        .where(
+          and(
+            eq(service.id, candidate.serviceId),
+            eq(service.workspaceId, workspace.id),
+          ),
+        )
+        .for("share");
+      await tx
+        .select({ id: workspaceIntegration.id })
+        .from(workspaceIntegration)
+        .where(
+          and(
+            eq(workspaceIntegration.id, candidate.integrationId),
+            eq(workspaceIntegration.workspaceId, workspace.id),
+          ),
+        )
+        .for("update");
+      const [updated] = await tx
+        .update(integrationRepository)
+        .set({
+          enabled,
+          version: sql`${integrationRepository.version} + 1`,
+          leaseToken: null,
+          leaseExpiresAt: null,
+          nextAttemptAt: sql`now()`,
+        })
+        .where(
+          and(
+            eq(integrationRepository.id, id),
+            eq(integrationRepository.workspaceId, workspace.id),
+            eq(integrationRepository.version, version),
+          ),
+        )
+        .returning();
+      return updated ? { ok: true, mappingId: id } : changed;
+    });
+  } catch {
+    return { error: "Unable to update this connection. Reload and try again." };
+  }
 }
 export async function connectRepository(
   slug: string,

@@ -36,8 +36,9 @@ export default defineConfig({
     timeout: 60_000,
     env: {
       DATABASE_URL: testDatabase,
-      GITHUB_APP_ID: "",
-      GITHUB_APP_PRIVATE_KEY_FILE: "",
+      // Render configured-host controls without real credentials or provider I/O.
+      GITHUB_APP_ID: "123",
+      GITHUB_APP_PRIVATE_KEY_FILE: "/nonexistent/vulnvault-browser-fixture.pem",
       BETTER_AUTH_URL: "http://127.0.0.1:3100",
       BETTER_AUTH_SECRET:
         "browser-test-only-secret-never-use-for-real-accounts-0123456789",
