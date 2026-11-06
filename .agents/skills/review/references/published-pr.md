@@ -17,14 +17,15 @@ diff and checks before posting. Anchor the review to the reviewed head when the
 tool supports it. Distinguish local results from CI and treat absent, inaccessible,
 pending or failed checks accurately.
 
-## Submit only the supported outcome
+## Submit the review as a comment
 
-- Use `APPROVE` only when review is complete, required checks passed and no
-  unresolved defects or blocking requests remain.
-- Use `COMMENT` for findings or incomplete evidence, with actionable locations
-  and missing verification. Also use it if GitHub prevents author self-approval
-  or the account cannot approve. Do not change identity to bypass that restriction
-  or describe a comment as a GitHub approval.
+- Always use `COMMENT`. State **Agent review: approved** when review is complete,
+  required checks passed and no unresolved blockers remain; otherwise give findings
+  or missing verification. Do not repeat platform approval limitations.
+- Explain the code-specific assessment: which changed paths were traced, why the
+  implementation works, which safeguards remain, and what relevant tests exercise.
+  Cite useful file/line locations and scale the detail to the change; a generic
+  statement that the diff was reviewed is insufficient.
 - After fixes, reassess the updated diff and affected checks. When posting remains
   authorised, submit a follow-up stating what was resolved and what remains.
 
@@ -41,7 +42,6 @@ Give one evidence-based recommendation for the reviewed head:
 | Return to development | Defects, unmet scope or missing implementation/tests need code changes; name the blockers. |
 | Wait for verification | No confirmed code blocker, but checks or review evidence remain incomplete; name what must complete. |
 
-A comment required by the self-approval restriction may still support a ready
-recommendation. New commits require an updated assessment. A review recommendation
+New commits require an updated assessment. A review recommendation
 does not grant merge permission; honour existing task-specific user merge
 authorisation rather than asking again when it has already been given.
