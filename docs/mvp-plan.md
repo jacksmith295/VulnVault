@@ -1,99 +1,59 @@
-# VulnVault MVP plan
+# VulnVault MVP roadmap
 
-## Purpose
+## Direction
 
-Build a dedicated vulnerability tracking application for the owner's other projects, while learning efficient AI-assisted engineering. Deliver useful, small increments, discussing each implementation plan before work begins.
+Build a useful vulnerability tracker for the owner's real projects, while learning AI-assisted engineering. Keep delivery in small, reviewed slices. This roadmap records current capabilities and priorities; detailed behaviour belongs in the linked feature plans. Agree on each feature's design and acceptance criteria before implementation.
 
-The application is initially self-hosted locally. Public hosting, cloud infrastructure, and commercial enterprise capabilities are future decisions.
+The initial product is self-hosted locally: Next.js on the host, PostgreSQL and development email through Docker Compose. Workspaces own services, findings, and integrations for solo developers and teams. Registration grants no workspace access. Authentication remains independent of repository providers. Public deployment and cloud infrastructure remain deferred.
 
-## Agreed direction
+## Current merged capabilities
 
-- Keep the existing Next.js frontend. Start with application backend responsibilities inside Next.js; discuss concrete Server Action and Route Handler boundaries per feature.
-- Use local PostgreSQL, managed through Docker Compose. Run Next.js on the host and capture development email in a local inbox.
-- Begin with email/password accounts, login, logout, protected access, and password reset. Repository provider login is optional future work.
-- Anyone who can reach the application can register. Account registration and workspace access are separate concerns.
-- Use workspaces from the start, for both solo developers and teams. A user can create a workspace and become its owner, or join an existing workspace by invitation. Registration alone creates neither a workspace nor membership.
-- Users may belong to multiple workspaces. Services, findings, and integrations belong to a workspace. A solo developer uses a workspace with one member; there are no separate personal and company account types. Owners/admins manage services and groups; members access services through groups. Detailed invitation mechanics still need agreement.
-- A service may link multiple repositories; whether any are required remains to be decided. Keep repository provider identity separate from user authentication.
-- Eventually support manually entered and automatically imported findings, a board, assignment, remediation, and rejected findings.
-- Initial external sources of interest are Dependabot and public CVE feeds. GitLab, Bitbucket, and other sources must remain possible later.
+| Area | Available now |
+| --- | --- |
+| [Authentication](auth-workspace-design.md) and [hardening](auth-hardening.md) | Email/password accounts, required email verification, password reset, logout, protected access, and seven-day sessions refreshed with activity. Reset revokes existing sessions. |
+| [Workspaces](workspace-onboarding-plan.md) | Creation, onboarding, multiple memberships, and a persistent workspace selector with independent context for explicit URLs. Invitation and member-administration UI remain future work. |
+| [Services](service-management-plan.md) | Create, edit, archive, and restore. Repository links are optional: a service can have zero or multiple repositories. |
+| [Service access](service-access-groups-plan.md) | Default all-member access or custom groups, server-enforced workspace isolation, and workspace-first permission locking. Owners/admins manage services and groups; members access permitted services. Broadening access to the default group requires confirmation. |
+| [Manual findings](manual-findings-plan.md) | One service per finding; New, Triaged, In progress, Resolved, Rejected, and Accepted risk statuses, with reopening. Every known workspace role can create/update accessible findings. No role can delete findings; archived-service findings are read-only. |
+| [Workspace board](findings-board-plan.md), [interactions](board-interactions-plan.md), and [responsive UI](responsive-ui-plan.md) | Authorised filters, bounded columns with Load more, status menus and dragging, mobile status tabs, and responsive filters. [Shared UI and themes](ui-foundation-plan.md) support light/dark/system preferences. |
+| [Dependabot ingestion](dependabot-ingestion-plan.md) | Operator-bound GitHub App installations, workspace repository mappings, local polling and Sync now, recoverable sync status, deduplication, and retained provenance. Real alerts have been imported. Upstream state refreshes independently of local triage and edits. |
 
-## Current repository
+Last reviewed on 2026-11-06 against `d8c2fa7`. Lint, TypeScript, production build, automated tests, hook regressions, and browser checks passed at that baseline. The review also identified the work below; passing existing checks does not cover these gaps.
 
-Authentication and workspace onboarding are merged, including local infrastructure, shared app header, workspace selector, integration tests, and browser tests. Service management is merged. The UI foundation and staged UI pre-commit hook are merged. Manual findings are merged. Service access groups are merged. Hardening is merged. The workspace findings board and responsive/motion refinements are merged. It is the workspace home at `/w/[workspaceSlug]`, with a separate Services listing and a compatibility redirect from `/findings`.
+## Next delivery slices
 
-At initialisation, the login form and login schema contained user changes. Preserve these when implementing subsequent work.
+### 1. Reliability fixes
 
-## Incremental delivery
+The immediate next action is a focused reliability PR addressing five review findings:
 
-These are planning slices, not approval to implement every slice. Agree on design and acceptance criteria before each one. Revisit scope as practical use reveals needs.
+- Keep continuous polling alive after a database failure within an iteration, with delayed retry and safe feedback. Preserve nonzero failure exit for `--once`. Regressions must distinguish recovery in continuous mode from one-shot failure.
+- Filter due mappings by the configured App ID before applying the batch limit of ten. Verify mappings from a previous App cannot starve eligible work.
+- Preserve the selected mobile status tab after a status mutation refreshes the board. Cover both menu and drag workflows without silently returning to New.
+- Return recoverable form feedback when an integration enable/disable transaction fails. Verify the page remains usable and reports failure without claiming a successful toggle.
+- Clear the selected service repository after a successful connection removes it from the available options while other links remain. Verify a subsequent action uses a current selection.
 
-### 1. Local foundation and authentication
+Add meaningful regression coverage for each outcome and retain existing permission, concurrency, and data-preservation checks.
 
-Design account identity and authentication before implementing their schema. Include users, workspaces, and memberships in the initial data design. Define workspace creation and onboarding boundaries before implementation. Select and verify maintained authentication tooling rather than designing password/session cryptography from scratch.
+### 2. Repeatable verification and safe diagnostics
 
-Set up PostgreSQL, development email, configuration examples, migrations, and test infrastructure needed for this slice. Connect registration and login to real persistence, add logout and protected access, and implement password reset.
+Add minimal CI for lint, TypeScript, hook regressions, automated tests, production build, and browser checks. Use isolated PostgreSQL and Mailpit; run persistence and browser suites sequentially. Follow the [verification setup](../README.md#verification).
 
-Acceptance targets:
+Improve diagnostics with safe operation and error categories, keeping raw sensitive errors, credentials, and vulnerability evidence out of logs and form feedback. Triage dependency advisories by affected path and practical exposure, with scoped upgrades and relevant regressions. Avoid forced authentication dependency upgrades that bypass the [hardening checks](auth-hardening.md). Separate a quick unit-test setup from database setup when that improves the development loop.
 
-- A developer can follow documented steps to start the app and supporting services locally.
-- A visitor can register, log in, access a protected landing page, and log out.
-- Invalid requests fail safely; signed-out users cannot access protected data or actions.
-- Password reset works through the development inbox, with expiring, single-use reset credentials.
-- Registration alone cannot expose another user's or workspace's private data.
-- Meaningful tests cover account and session behaviour, reset failures, and relevant permission boundaries.
-- Lint, type checks, applicable build checks, and independent review are complete.
+### 3. Real-project trial and local recovery
 
-Selected for this slice: Better Auth, its organisation plugin, Drizzle, PostgreSQL, and Mailpit. Required email verification and seven-day sessions refreshed with activity are agreed, with reset revoking existing sessions. Workspace UI and invitations follow separately. See the detailed design for policies and schema boundaries.
+Use the owner's projects to validate import, triage, remediation, and recovery before expanding integrations. Practise local backup/restore and an upgrade with existing data, including application/worker restart and polling recovery. Document repeatable steps and remaining gaps.
 
-### 2. Workspace context and first service
+The solo MVP is useful when the owner can import relevant alerts, triage them, fix the project upstream, verify refreshed upstream state, and explicitly resolve or reopen the local finding. Repeated sync must avoid duplicates and preserve local decisions. Manual findings, access boundaries, and durable data must remain reliable through restart, restore, and upgrade.
 
-Implement workspace creation and selection before service creation. Use a persistent header with a top-left workspace dropdown, including Create workspace + and All workspaces links. Default to an accessible remembered workspace after login; explicit URLs retain independent context in each tab. See the [workspace onboarding plan](workspace-onboarding-plan.md). A registered user can create a workspace and become its owner. Agree on who can manage services and how invitations are issued and accepted. Invitation and member-management UI can be a separate slice if not needed for the single-user workflow; joining existing workspaces by invitation remains the agreed direction.
+Use this trial to agree on completion and discover the next usability needs.
 
-Acceptance targets:
+### 4. Triage usability design
 
-- An authorised user can create, view, and edit a service in their workspace.
-- Service access is enforced on the server and isolated across workspaces, including for users with multiple memberships.
-- A service supports multiple repository associations in the agreed design. Decide whether the UI initially records repository references or performs an authenticated provider connection.
-- Required service fields and deletion/archive behaviour are agreed before implementation.
+Design imported-finding search across title, package, GHSA, and CVE, plus source and upstream-state filters. Make service finding lists compact and bounded; they currently load all rows. Agree on explicit reconciliation behaviour before adding actions that apply upstream changes locally. Preserve the separation between upstream facts and local decisions.
 
-### 3. Manual findings and workflow
+## Later decisions
 
-The user agreed on one service per finding, title, description, severity, optional reference URLs, and optional remediation notes. Members can create and update findings. No role can delete findings, and findings in archived services are read-only until restoration. See the [manual findings plan](manual-findings-plan.md) for the approved schema and lifecycle. The list/detail/edit slice precedes the board and assignment.
+Assignment, invitations, and member administration remain agreed future work. Design them when another user needs to join. Activity history, accepted-risk review dates, and bulk actions are optional candidates rather than committed MVP scope.
 
-The initial statuses are New, Triaged, In progress, Resolved, Rejected, and Accepted risk. Any status may transition to another, including reopening. The board provides status menus and drag handles under the [board interactions plan](board-interactions-plan.md). Moves change status and preserve automatic ordering. Assignment and rejection reasons remain separate design decisions.
-
-Acceptance targets:
-
-- An authorised user can record a finding against a service and track it through the agreed workflow.
-- The board and finding detail show consistent persisted state.
-- Invalid transitions and unauthorised changes are rejected.
-- Sensitive details remain isolated to authorised users.
-
-### 4. First automatic ingestion
-
-The first Dependabot integration is implemented for PR review under the [approved ingestion plan](dependabot-ingestion-plan.md): GitHub App with operator-authorized workspace binding, scoped repository mappings, local polling and Sync now, fenced retries, retained source identity, and upstream state separate from local triage.
-
-Acceptance targets:
-
-- A connected repository can supply real alerts to the appropriate service.
-- Repeated delivery does not create duplicate findings.
-- Ingestion failures are visible and recoverable.
-- Integration credentials stay server-side and access remains workspace-scoped.
-- Imported findings retain source identity and useful provenance.
-
-### 5. CVE relevance and useful local MVP
-
-Select feeds and decide how VulnVault knows a service's affected components and versions. A CVE feed alone cannot reliably identify which services are vulnerable. Inventory, matching, update handling, and noise control need their own design.
-
-Assess the end-to-end workflow using real projects, then agree on MVP completion criteria. Review backup/restore, upgrade steps, observability, and security issues appropriate to local use. Decide whether CVE matching is required for that first useful MVP or a later release.
-
-## Deferred scope
-
-Public deployment, cloud scaling, separate ingestion infrastructure, enterprise SSO, billing, advanced role systems, and additional providers are not initial requirements. Add infrastructure when observed needs justify it.
-
-## Next design discussion
-
-Services, the [UI foundation](ui-foundation-plan.md), and the staged UI pre-commit hook are merged. Manual findings are merged. The [service access groups plan](service-access-groups-plan.md) is merged. The [project-review hardening slice](auth-hardening.md) is merged. The [workspace findings board](findings-board-plan.md) implements the workspace home with authorised filters, bounded status columns, and status menus; it is awaiting PR review. Services sits beside Groups in the board header. Six fluid columns fit widths of at least 1280px, with status tabs below that breakpoint. Initial and filter loads use a stable Suspense skeleton and navigation transitions. Authenticated GET pagination and an isolated POST workspace preference endpoint preserve loaded pages until a deliberate refresh or board change. Drag-and-drop status moves and consistent severity colours are implemented under the [board interactions plan](board-interactions-plan.md). Assignment and invitation/membership management remain separate slices.
-
-Use a separate implementation agent and review agent. Review the proposed design as well as the resulting code. Feature branches and pushes are authorised; PRs remain for the user's review and approval before merging.
+Public CVE matching needs component inventory, versions, relevance rules, and noise control; a feed alone cannot identify affected services. Decide after the trial whether it belongs in the first useful MVP. Additional repository providers, separate ingestion infrastructure, cloud hosting, enterprise SSO, and billing remain outside initial scope.
