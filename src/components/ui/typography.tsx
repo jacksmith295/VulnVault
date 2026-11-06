@@ -9,7 +9,7 @@ const textVariants = cva("min-w-0 leading-relaxed [overflow-wrap:anywhere]", {
       danger: "text-destructive",
       success: "text-success",
     },
-    size: { sm: "text-sm", default: "text-base" },
+    size: { xs: "text-xs", sm: "text-sm", default: "text-base" },
   },
   defaultVariants: { tone: "default", size: "default" },
 });

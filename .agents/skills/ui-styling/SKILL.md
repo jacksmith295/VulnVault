@@ -18,6 +18,7 @@ description: Build or change VulnVault pages, forms, shared components, styling,
 - Put repeated page and form structure in `src/components/layout`. Keep shared layout and text components compatible with server rendering. Add client boundaries where interaction requires them.
 - Put Tailwind classes in shared component definitions. Expose typed variants for differences in size, tone, or layout. Do not add cosmetic `className` overrides to pages or feature components.
 - Put theme values in semantic tokens in `src/app/globals.css`. Preserve the green application identity in light and dark themes. Use the existing theme provider and persisted system, light, and dark preference.
+- Use the shared severity badge and semantic severity tokens consistently across finding views. Keep severity labels visible and verify both palettes; do not reuse the application accent for every risk level or rely on colour alone.
 
 ## Loading, navigation, and available space
 
@@ -34,6 +35,7 @@ description: Build or change VulnVault pages, forms, shared components, styling,
 - Define timing and easing in shared theme tokens and apply motion in shared component definitions. Prefer short, restrained transform/opacity transitions and focused control-state transitions. Avoid `transition-all`, animated layout dimensions, decorative page/card entrance sequences, and new animation dependencies without a demonstrated need.
 - Follow the installed Base UI lifecycle and gesture variables for entrance and exit states. Preserve overlay mounting through exit, focus return, dismissal, scroll unlocking, and rapid reopen behaviour. Keep control state outside animated overlays and never delay validation or authorisation feedback for an animation.
 - Respect `prefers-reduced-motion`: remove nonessential movement and finish state changes promptly. Verify actual entrance and exit movement with normal motion, plus reduced-motion completion, keyboard/nested overlays, rapid toggles, and breakpoint changes. CSS class presence alone does not prove an animation works.
+- On the findings board, lift a single tile without a visible source copy or placeholder gap. Use short transform-based sibling reflow while preserving DOM and server ordering. Cancel owned animations on cleanup. Keep action controls compact and omit idle instruction panels; pending and result feedback should describe actual activity.
 
 ## Preserve behaviour and accessibility
 
@@ -45,6 +47,7 @@ description: Build or change VulnVault pages, forms, shared components, styling,
 - Target WCAG 2.2 AA. Check rendered contrast, including translucent backgrounds and hover states: normal text needs 4.5:1, large text 3:1, and essential control boundaries and state indicators 3:1 against adjacent colours. Decorative borders and disabled controls have different requirements. Keep focus outlines opaque, separated from filled controls, and visible in forced-colors mode; do not rely on a faint background change for keyboard selection.
 - Include visible control text in its accessible name. Provide skip navigation to the main landmark and keep focused controls clear of sticky headers. After an update removes or moves the focused item, announce the result and move focus to a stable, meaningful target.
 - Ensure targets meet the 24 CSS pixel minimum or a documented WCAG exception. Preserve password paste and autocomplete. Check 320 CSS pixel reflow, 200% text resizing, and WCAG text-spacing overrides without clipped content or controls.
+- Drag interactions need a labelled handle, keyboard operation, announcements, visible destinations, and a non-drag alternative such as the existing status menu. Preserve ordinary touch scrolling outside handles. Cancel safely on Escape, invalid drops, scope changes and resizing, with visible focus recovery. Respect server-owned ordering, permissions, version checks and pending mutations; presentation feedback must not imply an unconfirmed save.
 
 ## Verify the change
 

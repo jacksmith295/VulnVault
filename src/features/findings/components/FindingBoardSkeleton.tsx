@@ -44,29 +44,31 @@ export function FindingBoardSkeleton({
           </DesktopFilters>
         </>
       )}
-      <StatusBoard
-        initialStatus={initialStatus}
-        columns={statuses.map((status) => ({
-          status,
-          label: statusLabels[status],
-          regionLabel: `${statusLabels[status]} findings`,
-          content: (
-            <Stack>
-              {[0, 1].map((index) => (
-                <Card size="sm" key={index}>
-                  <CardContent>
-                    <Stack>
-                      <Skeleton />
-                      <Skeleton />
-                      <Skeleton size="label" />
-                    </Stack>
-                  </CardContent>
-                </Card>
-              ))}
-            </Stack>
-          ),
-        }))}
-      />
+      <Stack grow>
+        <StatusBoard
+          initialStatus={initialStatus}
+          columns={statuses.map((status) => ({
+            status,
+            label: statusLabels[status],
+            regionLabel: `${statusLabels[status]} findings`,
+            content: (
+              <Stack>
+                {[0, 1].map((index) => (
+                  <Card size="sm" key={index}>
+                    <CardContent>
+                      <Stack>
+                        <Skeleton />
+                        <Skeleton />
+                        <Skeleton size="label" />
+                      </Stack>
+                    </CardContent>
+                  </Card>
+                ))}
+              </Stack>
+            ),
+          }))}
+        />
+      </Stack>
     </LoadingRegion>
   );
 }

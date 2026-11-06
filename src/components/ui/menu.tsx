@@ -2,10 +2,26 @@
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
 import NextLink from "next/link";
 import type { ComponentProps, ReactNode } from "react";
-import { ChevronDown, Check } from "lucide-react";
+import { ChevronDown, Check, Ellipsis } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 export const Menu = MenuPrimitive.Root;
+export function MenuIconTrigger({
+  className,
+  ...props
+}: MenuPrimitive.Trigger.Props & { "aria-label": string }) {
+  return (
+    <MenuPrimitive.Trigger
+      className={cn(
+        buttonVariants({ variant: "ghost", size: "icon-sm" }),
+        typeof className === "string" && className,
+      )}
+      {...props}
+    >
+      <Ellipsis aria-hidden="true" />
+    </MenuPrimitive.Trigger>
+  );
+}
 export function MenuTrigger({
   children,
   className,
@@ -71,7 +87,9 @@ export function MenuLink({
       render={<NextLink href={href} {...props} />}
       aria-current={current ? "page" : undefined}
     >
-      <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{children}</span>
+      <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
+        {children}
+      </span>
       {current && (
         <>
           <Check aria-hidden="true" className="size-4 shrink-0" />

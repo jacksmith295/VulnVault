@@ -1,5 +1,5 @@
 import { Inline } from "@/components/layout";
-import { Badge } from "@/components/ui/badge";
+import { Badge, SeverityBadge, type SeverityTone } from "@/components/ui/badge";
 import { severityLabels, statusLabels } from "../validation";
 export function FindingBadges({
   severity,
@@ -10,17 +10,9 @@ export function FindingBadges({
 }) {
   return (
     <Inline>
-      <Badge
-        tone={
-          severity === "critical" || severity === "high"
-            ? "danger"
-            : severity === "informational"
-              ? "muted"
-              : "default"
-        }
-      >
+      <SeverityBadge severity={severity as SeverityTone}>
         {severityLabels[severity as keyof typeof severityLabels]}
-      </Badge>
+      </SeverityBadge>
       <Badge
         tone={
           status === "resolved"
