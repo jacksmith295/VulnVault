@@ -209,6 +209,25 @@ async function page(
     nextCursor: rows.length > pageSize ? findings.at(-1)!.id : null,
   };
 }
+export async function getFindingBoardFilterOptions(
+  slug: string,
+  input: unknown,
+) {
+  const { user } = await requireSession();
+  return db.transaction(
+    async (tx) => {
+      const scope = await context(tx, slug, user.id, input);
+      if (!scope) notFound();
+      return {
+        filters: scope.filters,
+        services: scope.services.map(({ id, name }) => ({ id, name })),
+        groups: scope.groups.map(({ id, name }) => ({ id, name })),
+      };
+    },
+    { isolationLevel: "repeatable read", accessMode: "read only" },
+  );
+}
+
 export async function getFindingBoard(slug: string, input: unknown) {
   const { user } = await requireSession();
   return db.transaction(

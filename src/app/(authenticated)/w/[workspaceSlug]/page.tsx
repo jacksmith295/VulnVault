@@ -4,7 +4,10 @@ import { BoardSpace } from "@/components/layout/board";
 import { FormMessage } from "@/components/ui/form-message";
 import { AppLink } from "@/components/ui/link";
 import { parseBoardFilters } from "@/features/findings/board-validation";
-import { getFindingBoard } from "@/features/findings/board-data";
+import {
+  getFindingBoard,
+  getFindingBoardFilterOptions,
+} from "@/features/findings/board-data";
 import { FindingBoard } from "@/features/findings/components/FindingBoard";
 import { FindingBoardFilters } from "@/features/findings/components/FindingBoardFilters";
 import { FindingBoardSkeleton } from "@/features/findings/components/FindingBoardSkeleton";
@@ -37,7 +40,7 @@ export default async function WorkspacePage({
         }
       />
       <Suspense
-        key={`${workspaceSlug}:${JSON.stringify(query)}`}
+        key={workspaceSlug}
         fallback={
           <FindingBoardSkeleton
             initialStatus={parseBoardFilters(query).filters.status}
@@ -57,30 +60,52 @@ async function BoardContent({
   workspaceSlug: string;
   query: Query;
 }) {
-  const board = await getFindingBoard(workspaceSlug, query);
+  const options = await getFindingBoardFilterOptions(workspaceSlug, query);
+  const navigationKey = JSON.stringify(Object.entries(query).sort());
   return (
     <Stack gap="lg" grow>
       <FindingBoardFilters
-        key={JSON.stringify(query)}
         slug={workspaceSlug}
-        filters={board.filters}
-        groups={board.groups}
-        services={board.services}
+        navigationKey={navigationKey}
+        filters={options.filters}
+        groups={options.groups}
+        services={options.services}
       />
-      {board.filterError ? (
-        <BoardSpace>
-          <FormMessage>{board.filterError}</FormMessage>
-        </BoardSpace>
-      ) : (
-        <FindingBoard
-          key={board.scopeKey}
-          revisionKey={board.revisionKey}
-          slug={workspaceSlug}
-          filters={board.filters}
-          initialColumns={board.columns}
-          scopeKey={board.scopeKey}
-        />
-      )}
+      <Suspense
+        key={navigationKey}
+        fallback={
+          <FindingBoardSkeleton
+            includeFilters={false}
+            initialStatus={options.filters.status}
+          />
+        }
+      >
+        <BoardResults workspaceSlug={workspaceSlug} query={query} />
+      </Suspense>
     </Stack>
+  );
+}
+
+async function BoardResults({
+  workspaceSlug,
+  query,
+}: {
+  workspaceSlug: string;
+  query: Query;
+}) {
+  const board = await getFindingBoard(workspaceSlug, query);
+  return board.filterError ? (
+    <BoardSpace>
+      <FormMessage>{board.filterError}</FormMessage>
+    </BoardSpace>
+  ) : (
+    <FindingBoard
+      key={board.scopeKey}
+      revisionKey={board.revisionKey}
+      slug={workspaceSlug}
+      filters={board.filters}
+      initialColumns={board.columns}
+      scopeKey={board.scopeKey}
+    />
   );
 }

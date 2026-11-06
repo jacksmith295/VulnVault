@@ -7,24 +7,28 @@ import { statuses, statusLabels } from "../validation";
 
 export function FindingBoardSkeleton({
   initialStatus = "new",
+  includeFilters = true,
 }: {
   initialStatus?: string;
+  includeFilters?: boolean;
 }) {
   return (
     <LoadingRegion label="Loading findings">
-      <FormLayout tone="surface">
-        <FilterGrid>
-          {Array.from({ length: 5 }, (_, index) => (
-            <Stack gap="sm" key={index}>
-              <Skeleton size="label" />
-              <Skeleton size="control" />
-            </Stack>
-          ))}
-        </FilterGrid>
-        <FormActions>
-          <Skeleton size="control" />
-        </FormActions>
-      </FormLayout>
+      {includeFilters && (
+        <FormLayout tone="surface">
+          <FilterGrid>
+            {Array.from({ length: 5 }, (_, index) => (
+              <Stack gap="sm" key={index}>
+                <Skeleton size="label" />
+                <Skeleton size="control" />
+              </Stack>
+            ))}
+          </FilterGrid>
+          <FormActions>
+            <Skeleton size="control" />
+          </FormActions>
+        </FormLayout>
+      )}
       <StatusBoard
         initialStatus={initialStatus}
         columns={statuses.map((status) => ({

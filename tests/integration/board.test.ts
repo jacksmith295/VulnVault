@@ -44,6 +44,7 @@ import {
 
 import {
   getFindingBoard,
+  getFindingBoardFilterOptions,
   getMoreBoardFindings,
 } from "@/features/findings/board-data";
 import { parseBoardFilters } from "@/features/findings/board-validation";
@@ -232,6 +233,12 @@ describe("workspace findings board with PostgreSQL and real sessions", () => {
     for (const value of ["owner", "admin", "member"]) {
       await role(value);
       const board = await getFindingBoard(slug, {});
+      const options = await getFindingBoardFilterOptions(slug, {});
+      expect(options.services).toEqual(board.services);
+      expect(options.groups).toEqual(board.groups);
+      expect(options.services.some((row) => row.id === foreignService)).toBe(
+        false,
+      );
       expect(total(board)).toBe(value === "member" ? 1 : 2);
       expect(board.services.map((row) => row.id)).toEqual(
         expect.arrayContaining([serviceId]),
@@ -248,6 +255,9 @@ describe("workspace findings board with PostgreSQL and real sessions", () => {
     expect(hidden.filterError).toBeTruthy();
     expect(hidden.services.some((row) => row.id === secondService)).toBe(false);
     await role("unknown");
+    await expect(getFindingBoardFilterOptions(slug, {})).rejects.toThrow(
+      "not-found",
+    );
     await expect(getFindingBoard(slug, {})).rejects.toThrow("not-found");
   });
 
@@ -260,6 +270,9 @@ describe("workspace findings board with PostgreSQL and real sessions", () => {
           .set({ emailVerified: false })
           .where(eq(user.id, userId));
       try {
+        await expect(getFindingBoardFilterOptions(slug, {})).rejects.toThrow(
+          "redirect:/login",
+        );
         await expect(getFindingBoard(slug, {})).rejects.toThrow(
           "redirect:/login",
         );
@@ -279,6 +292,9 @@ describe("workspace findings board with PostgreSQL and real sessions", () => {
     signedIn();
     await db.delete(member).where(eq(member.id, membershipId));
     try {
+      await expect(getFindingBoardFilterOptions(slug, {})).rejects.toThrow(
+        "not-found",
+      );
       await expect(getFindingBoard(slug, {})).rejects.toThrow("not-found");
       expect(await getMoreBoardFindings(slug, {}, "new", "x", "x")).toEqual({
         reset: true,

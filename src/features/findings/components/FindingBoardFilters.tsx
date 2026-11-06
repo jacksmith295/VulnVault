@@ -16,26 +16,44 @@ import {
   statusLabels,
 } from "../validation";
 
+function filterValues(filters: BoardFilters): Record<string, string> {
+  return {
+    group: filters.group ?? "",
+    service: filters.service ?? "",
+    severity: filters.severity ?? "",
+    status: filters.status ?? "",
+    archive: filters.archive,
+  };
+}
+
 export function FindingBoardFilters({
   slug,
+  navigationKey,
   filters,
   groups,
   services,
 }: {
   slug: string;
+  navigationKey: string;
   filters: BoardFilters;
   groups: { id: string; name: string }[];
   services: { id: string; name: string }[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [values, setValues] = useState<Record<string, string>>({
-    group: filters.group ?? "",
-    service: filters.service ?? "",
-    severity: filters.severity ?? "",
-    status: filters.status ?? "",
-    archive: filters.archive,
-  });
+  const [values, setValues] = useState(() => filterValues(filters));
+  const [appliedNavigationKey, setAppliedNavigationKey] =
+    useState(navigationKey);
+  const [requestedNavigationKey, setRequestedNavigationKey] =
+    useState<string>();
+  if (navigationKey !== appliedNavigationKey) {
+    setAppliedNavigationKey(navigationKey);
+    setRequestedNavigationKey(undefined);
+    // An Apply response must preserve edits made while its board was loading.
+    // History navigation instead restores the filters represented by that URL.
+    if (navigationKey !== requestedNavigationKey)
+      setValues(filterValues(filters));
+  }
   const fields = [
     {
       name: "group",
@@ -91,6 +109,7 @@ export function FindingBoardFilters({
       onSubmit={(event) => {
         event.preventDefault();
         const query = new URLSearchParams(values);
+        setRequestedNavigationKey(JSON.stringify([...query.entries()].sort()));
         startTransition(() =>
           router.push(`/w/${slug}?${query}`, { scroll: false }),
         );
@@ -134,6 +153,8 @@ export function FindingBoardFilters({
             )
               return;
             event.preventDefault();
+            setValues(filterValues({ archive: "active" }));
+            setRequestedNavigationKey(JSON.stringify([]));
             startTransition(() => router.push(`/w/${slug}`, { scroll: false }));
           }}
         >

@@ -22,6 +22,7 @@ description: Build or change VulnVault pages, forms, shared components, styling,
 ## Loading, navigation, and available space
 
 - Use React Suspense with reusable skeleton components for asynchronous page and section reads. Put the awaited data read inside the suspended child; a boundary added after the read cannot provide a loading fallback.
+- Scope Suspense boundaries to the content being refreshed. After initial loading, keep filter panels and other stable controls mounted while result sections load. Use section skeletons for results; reserve whole-panel skeletons for initial loading. Preserve selections and pending feedback, and synchronize controls with URL changes such as Clear and browser Back/Forward.
 - Match skeleton geometry to the loaded layout, including filters, board columns, and responsive heights. Loading, empty, and error states should retain the section's footprint instead of collapsing and moving surrounding content.
 - Use client navigation for filters and preserve scroll position. Provide pending feedback while the requested URL loads. Do not clear a populated board into a zero-height state between filter results.
 - Use available application width for dense work views. Keep readable form widths where useful. Prefer CSS-responsive layout that has the same initial geometry before and after hydration; avoid rendering a mobile layout on the server and replacing it with a desktop layout on mount.

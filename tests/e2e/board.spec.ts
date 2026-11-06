@@ -2,7 +2,12 @@ import { randomUUID } from "node:crypto";
 import { expect, type Page } from "@playwright/test";
 import { Pool } from "pg";
 import { test } from "./fixtures";
-import { chooseTheme, origin, verifiedAccount } from "./helpers";
+import {
+  chooseTheme,
+  origin,
+  refreshServerProps,
+  verifiedAccount,
+} from "./helpers";
 
 async function workspaceFixture(page: Page, pool: Pool) {
   const slug = `board-${randomUUID()}`;
@@ -605,7 +610,7 @@ test("board rejects stale status edits and keeps archived cards read-only", asyn
   }
 });
 
-test("workspace home streams a stable board skeleton while filters load", async ({
+test("workspace home preserves filters while board results stream", async ({
   page,
   context,
 }) => {
@@ -635,6 +640,13 @@ test("workspace home streams a stable board skeleton while filters load", async 
         window as Window & { boardNavigationMarker?: string }
       ).boardNavigationMarker = "same-document";
     });
+    const severity = page.getByRole("combobox", {
+      name: "Severity",
+      exact: true,
+    });
+    await severity.evaluate((element) => {
+      element.setAttribute("data-persistent-filter", "original");
+    });
     await selectFilter(page, "Severity", "Critical");
     // Hold the real query, allowing the server Suspense fallback to stream first.
     await blocker.query("BEGIN");
@@ -646,6 +658,12 @@ test("workspace home streams a stable board skeleton while filters load", async 
     await expect(
       page.getByRole("status", { name: "Loading findings", exact: true }),
     ).toBeVisible();
+    await expect(severity).toBeVisible();
+    await expect(severity).toHaveAttribute(
+      "data-persistent-filter",
+      "original",
+    );
+    await expect(severity).toContainText("Critical");
     const pending = await board.boundingBox();
     expect(pending).not.toBeNull();
     expect(Math.abs(pending!.y - before!.y)).toBeLessThanOrEqual(2);
@@ -655,6 +673,7 @@ test("workspace home streams a stable board skeleton while filters load", async 
       path: test.info().outputPath("board-loading-2560.png"),
       fullPage: true,
     });
+    await selectFilter(page, "Severity", "High");
     await blocker.query("COMMIT");
     await expect(
       page.getByRole("status", { name: "Loading findings", exact: true }),
@@ -666,6 +685,11 @@ test("workspace home streams a stable board skeleton while filters load", async 
     await expect(
       page.getByRole("link", { name: "High work", exact: true }),
     ).toHaveCount(0);
+    await expect(severity).toHaveAttribute(
+      "data-persistent-filter",
+      "original",
+    );
+    await expect(severity).toContainText("High");
     const after = await board.boundingBox();
     expect(after).not.toBeNull();
     expect(Math.abs(after!.y - before!.y)).toBeLessThanOrEqual(2);
@@ -677,6 +701,52 @@ test("workspace home streams a stable board skeleton while filters load", async 
             .boardNavigationMarker,
       ),
     ).toBe("same-document");
+
+    await blocker.query("BEGIN");
+    await blocker.query(
+      "SET LOCAL idle_in_transaction_session_timeout = '20s'",
+    );
+    await blocker.query("LOCK TABLE finding IN ACCESS EXCLUSIVE MODE");
+    await page
+      .getByRole("link", { name: "Clear filters", exact: true })
+      .click();
+    await expect(
+      page.getByRole("status", { name: "Loading findings", exact: true }),
+    ).toBeVisible();
+    await expect(severity).toHaveAttribute(
+      "data-persistent-filter",
+      "original",
+    );
+    await expect(severity).toContainText("All severities");
+    await blocker.query("COMMIT");
+    await expect(
+      page.getByRole("link", { name: "High work", exact: true }),
+    ).toBeVisible();
+    await expect(severity).toHaveAttribute(
+      "data-persistent-filter",
+      "original",
+    );
+    await page.goBack();
+    await expect(page).toHaveURL(/severity=critical/u);
+    await expect(severity).toContainText("Critical");
+    await expect(
+      page.getByRole("link", { name: "High work", exact: true }),
+    ).toHaveCount(0);
+    await page.goForward();
+    await expect(page).toHaveURL(`${origin}${fixture.path}`);
+    await expect(severity).toContainText("All severities");
+    await expect(
+      page.getByRole("link", { name: "High work", exact: true }),
+    ).toBeVisible();
+    // Clear also removes an unapplied draft when the URL is already unfiltered.
+    await selectFilter(page, "Severity", "High");
+    const refreshed = await refreshServerProps(page);
+    expect(refreshed).toContain("High work");
+    await expect(severity).toContainText("High");
+    await page
+      .getByRole("link", { name: "Clear filters", exact: true })
+      .click();
+    await expect(severity).toContainText("All severities");
 
     await page.getByRole("link", { name: "Services", exact: true }).click();
     await expect(page).toHaveURL(`${origin}/w/${fixture.slug}/services`);
