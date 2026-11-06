@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { and, asc, eq, notInArray, sql } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { db } from "@/db";
-import { finding, findingReference, service } from "@/db/schema";
+import { finding, findingReference, findingSource, service } from "@/db/schema";
 import { requireSession } from "@/lib/auth-session";
 import { requireService } from "@/features/services/data";
 import {
@@ -16,6 +16,7 @@ import { createFindingSchema, editFindingSchema, statuses } from "./validation";
 import { z } from "zod";
 
 export type Finding = typeof finding.$inferSelect;
+export type FindingSource = typeof findingSource.$inferSelect;
 export type FindingResult =
   | { finding: Finding; error?: never; conflict?: never }
   | { error: string; conflict?: boolean; finding?: never };
@@ -77,7 +78,25 @@ export async function requireFinding(
       ),
     )
     .orderBy(asc(findingReference.url));
-  return { ...scope, finding: found, references };
+  const [source] = await db
+    .select({ source: findingSource })
+    .from(findingSource)
+    .innerJoin(finding, eq(finding.id, findingSource.findingId))
+    .innerJoin(service, eq(service.id, finding.serviceId))
+    .where(
+      and(
+        eq(findingSource.findingId, found.id),
+        eq(findingSource.serviceId, scope.service.id),
+        eq(findingSource.workspaceId, scope.workspace.id),
+        serviceAccessCondition(user.id),
+      ),
+    );
+  return {
+    ...scope,
+    finding: found,
+    references,
+    source: source?.source ?? null,
+  };
 }
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];

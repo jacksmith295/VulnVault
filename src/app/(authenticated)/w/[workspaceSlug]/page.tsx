@@ -34,7 +34,12 @@ export default async function WorkspacePage({
           <Inline>
             <AppLink href={`/w/${workspace.slug}/services`}>Services</AppLink>
             {["owner", "admin"].includes(workspace.role) && (
-              <AppLink href={`/w/${workspace.slug}/groups`}>Groups</AppLink>
+              <>
+                <AppLink href={`/w/${workspace.slug}/groups`}>Groups</AppLink>
+                <AppLink href={`/w/${workspace.slug}/integrations`}>
+                  Integrations
+                </AppLink>
+              </>
             )}
           </Inline>
         }

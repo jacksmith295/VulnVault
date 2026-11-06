@@ -9,6 +9,8 @@ import {
 import { TextLink } from "@/components/ui/link";
 import { Text } from "@/components/ui/typography";
 import type { Finding } from "../data";
+import type { findingSource } from "@/db/schema";
+import { FindingSourceInfo } from "@/features/integrations/components/FindingSourceInfo";
 import { FindingBadges } from "./FindingBadges";
 export function FindingDetails({
   slug,
@@ -16,12 +18,14 @@ export function FindingDetails({
   finding,
   references,
   archived,
+  source,
 }: {
   slug: string;
   serviceId: string;
   finding: Finding;
   references: { id: string; url: string }[];
   archived: boolean;
+  source?: typeof findingSource.$inferSelect | null;
 }) {
   return (
     <Stack gap="lg">
@@ -37,6 +41,7 @@ export function FindingDetails({
           Edit finding
         </TextLink>
       )}
+      {source && <FindingSourceInfo source={source} />}
       <Section title="Description">
         <Text preserveWhitespace measure="readable">
           {finding.description}

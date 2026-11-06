@@ -20,7 +20,7 @@ The application is initially self-hosted locally. Public hosting, cloud infrastr
 
 ## Current repository
 
-Authentication and workspace onboarding are merged, including local infrastructure, shared app header, workspace selector, integration tests, and browser tests. Service management is merged. The UI foundation and staged UI pre-commit hook are merged. Manual findings are merged. Service access groups are merged. Hardening is merged. The workspace findings board is implemented on its feature branch for review. It is the workspace home at `/w/[workspaceSlug]`, with a separate Services listing and a compatibility redirect from `/findings`.
+Authentication and workspace onboarding are merged, including local infrastructure, shared app header, workspace selector, integration tests, and browser tests. Service management is merged. The UI foundation and staged UI pre-commit hook are merged. Manual findings are merged. Service access groups are merged. Hardening is merged. The workspace findings board and responsive/motion refinements are merged. It is the workspace home at `/w/[workspaceSlug]`, with a separate Services listing and a compatibility redirect from `/findings`.
 
 At initialisation, the login form and login schema contained user changes. Preserve these when implementing subsequent work.
 
@@ -72,7 +72,7 @@ Acceptance targets:
 
 ### 4. First automatic ingestion
 
-Start by discussing a Dependabot integration. Decide provider permissions, how repositories connect, ingestion transport, retries, deduplication, and how upstream changes interact with local triage.
+The first Dependabot integration is implemented for PR review under the [approved ingestion plan](dependabot-ingestion-plan.md): GitHub App with operator-authorized workspace binding, scoped repository mappings, local polling and Sync now, fenced retries, retained source identity, and upstream state separate from local triage.
 
 Acceptance targets:
 

@@ -17,7 +17,9 @@
     "hooks:install": "node scripts/install-hooks.mjs",
     "prepare": "node scripts/install-hooks.mjs --prepare",
     "test:hooks": "node --test tests/hooks/*.node.mjs",
-    "hooks:check": "node scripts/check-staged-ui.mjs"
+    "hooks:check": "node scripts/check-staged-ui.mjs",
+    "github:connect": "node --conditions=react-server --import tsx scripts/github-connect.ts",
+    "integrations:worker": "node --conditions=react-server --import tsx scripts/integrations-worker.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
