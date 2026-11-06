@@ -112,7 +112,7 @@ const boardPlugins: NonNullable<
   ComponentProps<typeof DragDropProvider>["plugins"]
 > = (defaults) => [...defaults, ...boardPluginOverrides];
 const cardFeedback = [
-  Feedback.configure({ feedback: "clone", dropAnimation: null }),
+  Feedback.configure({ feedback: "move", dropAnimation: null }),
 ];
 
 export function BoardDragProvider({
@@ -245,12 +245,121 @@ export function useBoardDrag() {
   return useContext(DragContext);
 }
 
+export function BoardDragList({ children }: { children: ReactNode }) {
+  const list = useRef<HTMLDivElement>(null);
+  const positions = useRef(new Map<HTMLElement, DOMRect>());
+  const origin = useRef<DOMRect | undefined>(undefined);
+  const animations = useRef(new Map<HTMLElement, Animation>());
+  function capture() {
+    const element = list.current;
+    if (!element || element.querySelector("[data-dnd-dragging]")) return;
+    origin.current = element.getBoundingClientRect();
+    positions.current = new Map(
+      [...element.children]
+        .filter((child): child is HTMLElement => child instanceof HTMLElement)
+        .map((child) => {
+          const rect = child.getBoundingClientRect();
+          if (!animations.current.has(child)) return [child, rect];
+          // A new pickup can begin during restoration. Keep layout coordinates
+          // here because the observer adds the current visual offset once.
+          const [x, y] = getComputedStyle(child).translate.split(/\s+/);
+          return [
+            child,
+            new DOMRect(
+              rect.x - (parseFloat(x) || 0),
+              rect.y - (parseFloat(y) || 0),
+              rect.width,
+              rect.height,
+            ),
+          ];
+        }),
+    );
+  }
+  useEffect(() => {
+    const element = list.current;
+    if (!element) return;
+    let active = true;
+    const ownedAnimations = animations.current;
+    // The installed Feedback plugin marks the lifted original with this
+    // attribute. Watching only that marker avoids restarting motion on moves.
+    const observer = new MutationObserver(() => {
+      if (!active) return;
+      const previous = positions.current;
+      const next = new Map<HTMLElement, DOMRect>();
+      const currentOrigin = element.getBoundingClientRect();
+      // Scrolling while holding a tile changes viewport coordinates without
+      // changing where siblings sit within their column.
+      const offsetX =
+        currentOrigin.left - (origin.current?.left ?? currentOrigin.left);
+      const offsetY =
+        currentOrigin.top - (origin.current?.top ?? currentOrigin.top);
+      const reduced = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
+      const styles = getComputedStyle(element);
+      const duration = parseFloat(
+        styles.getPropertyValue("--motion-duration-normal"),
+      );
+      const easing = styles.getPropertyValue("--motion-ease-out").trim();
+      for (const child of element.children) {
+        if (!(child instanceof HTMLElement)) continue;
+        const visual = child.getBoundingClientRect();
+        ownedAnimations.get(child)?.cancel();
+        ownedAnimations.delete(child);
+        if (child.hasAttribute("data-dnd-dragging")) continue;
+        const current = child.getBoundingClientRect();
+        next.set(child, current);
+        const old = previous.get(child);
+        if (!old || reduced) continue;
+        const x =
+          old.left + offsetX - current.left + visual.left - current.left;
+        const y = old.top + offsetY - current.top + visual.top - current.top;
+        if (!x && !y) continue;
+        const animation = child.animate(
+          { translate: [`${x}px ${y}px`, "0px 0px"] },
+          { duration, easing },
+        );
+        ownedAnimations.set(child, animation);
+        animation.onfinish = () => {
+          if (ownedAnimations.get(child) === animation) {
+            ownedAnimations.delete(child);
+          }
+        };
+      }
+      positions.current = next;
+      origin.current = currentOrigin;
+    });
+    observer.observe(element, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["data-dnd-dragging"],
+    });
+    return () => {
+      active = false;
+      observer.disconnect();
+      for (const animation of ownedAnimations.values()) animation.cancel();
+      ownedAnimations.clear();
+    };
+  }, []);
+  return (
+    <div
+      ref={list}
+      className="flex min-w-0 flex-col gap-4"
+      onPointerDownCapture={capture}
+      onKeyDownCapture={capture}
+    >
+      {children}
+    </div>
+  );
+}
+
 export function BoardDragCard({
   id,
   severity,
   status,
   disabled,
   title,
+  actions,
   children,
 }: {
   id: string;
@@ -258,6 +367,7 @@ export function BoardDragCard({
   status: string;
   disabled: boolean;
   title: string;
+  actions: ReactNode;
   children: ReactNode;
 }) {
   const { ref, handleRef, isDragging } = useDraggable({
@@ -271,9 +381,10 @@ export function BoardDragCard({
     <div
       ref={ref}
       data-slot="card"
+      data-board-card-id={id}
       data-dragging={isDragging || undefined}
       className={cn(
-        "relative rounded-xl border border-border border-l-4 bg-card text-card-foreground shadow-xs hover:shadow-md motion-safe:transition-shadow motion-safe:duration-(--motion-duration-fast) motion-safe:ease-(--motion-ease-out) data-dragging:shadow-xl",
+        "relative rounded-xl border border-border border-l-4 bg-card text-sm text-card-foreground shadow-xs hover:shadow-md motion-safe:transition-shadow motion-safe:duration-(--motion-duration-fast) motion-safe:ease-(--motion-ease-out) data-dragging:shadow-xl",
         severity === "critical"
           ? "border-l-(--severity-critical)"
           : severity === "high"
@@ -285,7 +396,7 @@ export function BoardDragCard({
                 : "border-l-(--severity-informational)",
       )}
     >
-      <div className="absolute right-2 top-2">
+      <div className="absolute right-2 top-2 flex items-center gap-1">
         <Button
           ref={handleRef}
           variant="ghost"
@@ -296,14 +407,15 @@ export function BoardDragCard({
         >
           <GripVertical aria-hidden="true" />
         </Button>
+        {actions}
       </div>
-      <div className="p-3">{children}</div>
+      <div className="p-2.5">{children}</div>
     </div>
   );
 }
 
 export function BoardCardTitle(props: ComponentProps<typeof TextLink>) {
-  return <TextLink className="block pr-7 leading-relaxed" {...props} />;
+  return <TextLink className="block pr-16 leading-snug" {...props} />;
 }
 
 export function BoardDropTarget({

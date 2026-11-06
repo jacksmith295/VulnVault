@@ -132,6 +132,223 @@ async function saved(pool: Pool, id: string) {
   ).rows[0];
 }
 
+for (const motion of ["no-preference", "reduce"] as const) {
+  test(`compact cards lift without a copy or gap and cancel safely with ${motion} motion`, async ({
+    page,
+    context,
+  }) => {
+    const owner = await verifiedAccount(context);
+    const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+    const data = await fixture(page, pool);
+    try {
+      const siblingId = await finding(pool, data.service, "Compact sibling");
+      const sourceId = await finding(pool, data.service, "Compact source");
+      const longTitle =
+        "A long finding title that wraps beside the compact actions without covering either control";
+      const longId = await finding(pool, data.service, longTitle);
+      await pool.query(
+        "UPDATE finding SET created_at = CASE id WHEN $1 THEN '2026-01-03'::timestamp WHEN $2 THEN '2026-01-02'::timestamp ELSE '2026-01-01'::timestamp END WHERE id = ANY($3::text[])",
+        [sourceId, siblingId, [sourceId, siblingId, longId]],
+      );
+      await page.emulateMedia({ reducedMotion: motion });
+      // Hold sibling layout animations so intermediate geometry can be sampled
+      // deterministically, rather than checking only classes or final positions.
+      await page.addInitScript(() => {
+        const animate = Element.prototype.animate;
+        Element.prototype.animate = function (keyframes, options) {
+          const animation = animate.call(this, keyframes, options);
+          const layout = Array.isArray(keyframes)
+            ? keyframes.some(
+                (frame) => "translate" in frame || "transform" in frame,
+              )
+            : keyframes &&
+              ("translate" in keyframes || "transform" in keyframes);
+          if (this.hasAttribute("data-board-card-id") && layout) {
+            this.setAttribute("data-test-layout-animation", "true");
+            animation.pause();
+            animation.currentTime = 0;
+          }
+          return animation;
+        };
+      });
+      await page.setViewportSize({ width: 1440, height: 1000 });
+      await page.goto(data.path);
+      const source = page.locator(`[data-board-card-id="${sourceId}"]`);
+      const sibling = page.locator(`[data-board-card-id="${siblingId}"]`);
+      const cards = page
+        .getByRole("region", { name: "New findings", exact: true })
+        .locator("[data-board-card-id]");
+      const order = [sourceId, siblingId, longId];
+      await expect(handle(page, "Compact source")).toBeEnabled();
+      await expect(
+        page.getByText(
+          "Drag a finding to change its status, or use its menu.",
+          { exact: true },
+        ),
+      ).toHaveCount(0);
+      for (const width of [320, 1440]) {
+        await page.setViewportSize({ width, height: 1000 });
+        await expect(source).toBeVisible();
+        const bounds = await source.boundingBox();
+        expect(bounds!.height).toBeLessThanOrEqual(125);
+        for (const title of ["Compact source", longTitle]) {
+          const menu = page.getByRole("button", {
+            name: `Change status for ${title}`,
+            exact: true,
+          });
+          const menuBounds = await menu.boundingBox();
+          const handleBounds = await handle(page, title).boundingBox();
+          expect(menuBounds!.width).toBeLessThanOrEqual(32);
+          expect(menuBounds!.width).toBeGreaterThanOrEqual(24);
+          expect(handleBounds!.width).toBeGreaterThanOrEqual(24);
+          expect(handleBounds!.x + handleBounds!.width).toBeLessThanOrEqual(
+            menuBounds!.x,
+          );
+          const fragments = await page
+            .getByRole("link", { name: title, exact: true })
+            .evaluate((link) => {
+              const range = document.createRange();
+              range.selectNodeContents(link);
+              return [...range.getClientRects()].map((rect) => ({
+                x: rect.x,
+                y: rect.y,
+                right: rect.right,
+                bottom: rect.bottom,
+              }));
+            });
+          for (const fragment of fragments) {
+            if (
+              fragment.y < handleBounds!.y + handleBounds!.height &&
+              fragment.bottom > handleBounds!.y
+            )
+              expect(fragment.right).toBeLessThanOrEqual(handleBounds!.x);
+          }
+        }
+      }
+      const before = await source.boundingBox();
+      const siblingBefore = await sibling.boundingBox();
+      const original = await saved(pool, sourceId);
+      await startDrag(page, "Compact source");
+      await expect(source).toHaveCount(1);
+      await expect(page.locator("[data-dnd-placeholder]")).toHaveCount(0);
+      await expect(page.locator("[data-dnd-dragging]")).toHaveCount(1);
+      await expect
+        .poll(() =>
+          cards.evaluateAll((elements) =>
+            elements.map((element) =>
+              element.getAttribute("data-board-card-id"),
+            ),
+          ),
+        )
+        .toEqual(order);
+      if (motion === "no-preference") {
+        await expect(sibling).toHaveAttribute(
+          "data-test-layout-animation",
+          "true",
+        );
+        const samples = await sibling.evaluate(async (element) => {
+          const animation = element
+            .getAnimations()
+            .find((candidate) => candidate.playState === "paused")!;
+          const duration = Number(
+            animation.effect!.getComputedTiming().duration,
+          );
+          const positions: number[] = [];
+          for (const fraction of [0.1, 0.9]) {
+            animation.currentTime = duration * fraction;
+            await new Promise<void>((resolve) =>
+              requestAnimationFrame(() => resolve()),
+            );
+            positions.push(element.getBoundingClientRect().top);
+          }
+          animation.finish();
+          return positions;
+        });
+        expect(samples[0]).toBeLessThan(siblingBefore!.y);
+        expect(samples[1]).toBeGreaterThanOrEqual(before!.y - 1);
+        expect(samples[0] - samples[1]).toBeGreaterThan(4);
+      } else {
+        await expect(sibling).not.toHaveAttribute(
+          "data-test-layout-animation",
+          "true",
+        );
+        expect(
+          await sibling.evaluate((element) => element.getAnimations().length),
+        ).toBe(0);
+      }
+      await expect
+        .poll(async () => (await sibling.boundingBox())!.y)
+        .toBeCloseTo(before!.y, 0);
+      await page.keyboard.press("Escape");
+      await page.mouse.up();
+      await expect(page.locator("[data-dnd-dragging]")).toHaveCount(0);
+      await expect(handle(page, "Compact source")).toBeFocused();
+      if (motion === "no-preference") {
+        const returningTop = await sibling.evaluate(async (element) => {
+          const animation = element
+            .getAnimations()
+            .find((candidate) => candidate.playState === "paused")!;
+          animation.currentTime =
+            Number(animation.effect!.getComputedTiming().duration) * 0.15;
+          await new Promise<void>((resolve) =>
+            requestAnimationFrame(() => resolve()),
+          );
+          return element.getBoundingClientRect().top;
+        });
+        expect(returningTop).toBeGreaterThan(before!.y + 4);
+        expect(returningTop).toBeLessThan(siblingBefore!.y - 4);
+        // Pick up again while the previous return is visibly incomplete. The
+        // replacement animation must begin at that visible position, without
+        // counting its existing movement twice or overshooting the destination.
+        await startDrag(page, "Compact source");
+        await expect
+          .poll(async () => (await sibling.boundingBox())!.y)
+          .toBeCloseTo(returningTop, 0);
+        const restartingTop = await sibling.evaluate(async (element) => {
+          const animation = element
+            .getAnimations()
+            .find((candidate) => candidate.playState === "paused")!;
+          animation.currentTime =
+            Number(animation.effect!.getComputedTiming().duration) * 0.5;
+          await new Promise<void>((resolve) =>
+            requestAnimationFrame(() => resolve()),
+          );
+          const top = element.getBoundingClientRect().top;
+          animation.finish();
+          return top;
+        });
+        expect(restartingTop).toBeGreaterThanOrEqual(before!.y - 1);
+        expect(restartingTop).toBeLessThan(returningTop - 1);
+        await expect
+          .poll(async () => (await sibling.boundingBox())!.y)
+          .toBeCloseTo(before!.y, 0);
+        await page.keyboard.press("Escape");
+        await page.mouse.up();
+        await expect(page.locator("[data-dnd-dragging]")).toHaveCount(0);
+        await expect(handle(page, "Compact source")).toBeFocused();
+      }
+      await sibling.evaluate((element) => {
+        for (const animation of element.getAnimations()) animation.finish();
+      });
+      await expect
+        .poll(async () => (await sibling.boundingBox())!.y)
+        .toBeCloseTo(siblingBefore!.y, 0);
+      await expect
+        .poll(() =>
+          cards.evaluateAll((elements) =>
+            elements.map((element) =>
+              element.getAttribute("data-board-card-id"),
+            ),
+          ),
+        )
+        .toEqual(order);
+      expect(await saved(pool, sourceId)).toEqual(original);
+    } finally {
+      await cleanup(pool, data, owner.id);
+    }
+  });
+}
+
 test("pointer moves persist and cancellation never changes findings", async ({
   page,
   context,
@@ -232,6 +449,15 @@ test("stale drag reports a conflict and pending mutations block repeated changes
       .getByRole("button", { name: "Refresh board", exact: true })
       .click();
     await expect(handle(page, "Pending drag")).toBeEnabled();
+    const originalColumn = page.getByRole("region", {
+      name: "New findings",
+      exact: true,
+    });
+    const originalOrder = await originalColumn
+      .locator("[data-board-card-id]")
+      .evaluateAll((elements) =>
+        elements.map((element) => element.getAttribute("data-board-card-id")),
+      );
     let actionCount = 0;
     await page.route(`**${data.path}`, async (route) => {
       if (
@@ -250,6 +476,20 @@ test("stale drag reports a conflict and pending mutations block repeated changes
       page.getByText("Updating Pending drag to Triaged…", { exact: true }),
     ).toBeVisible();
     await expect(handle(page, "Pending drag")).toBeDisabled();
+    // Removing the lift does not predict the server response. The original
+    // stays in its authoritative column until the response refreshes the board.
+    await expect(page.locator("[data-dnd-dragging]")).toHaveCount(0);
+    await expect(
+      originalColumn.locator(`[data-board-card-id="${pending}"]`),
+    ).toHaveCount(1);
+    expect(
+      await originalColumn
+        .locator("[data-board-card-id]")
+        .evaluateAll((elements) =>
+          elements.map((element) => element.getAttribute("data-board-card-id")),
+        ),
+    ).toEqual(originalOrder);
+    expect((await saved(pool, pending)).status).toBe("new");
     await expect(
       page.getByRole("button", {
         name: "Change status for Stale drag",
@@ -264,6 +504,11 @@ test("stale drag reports a conflict and pending mutations block repeated changes
     await expect(
       page.getByText("Pending drag moved to Triaged.", { exact: true }),
     ).toBeFocused();
+    await expect(
+      page
+        .getByRole("region", { name: "Triaged findings", exact: true })
+        .locator(`[data-board-card-id="${pending}"]`),
+    ).toBeVisible();
     expect((await saved(pool, pending)).version).toBe(2);
   } finally {
     release();

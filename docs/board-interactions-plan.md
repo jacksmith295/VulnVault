@@ -13,6 +13,12 @@ motion short, purposeful and removable through reduced-motion preferences.
 No dashboard charts, additional workflow fields or unrelated navigation changes
 are included.
 
+Tiles show the title, severity and service; the column already supplies status.
+A compact ellipsis menu beside the drag handle provides the click/tap alternative
+without a separate control row. Keep pending, error and success feedback, but do
+not show an idle instruction panel or reserve skeleton space for one. Tooltip
+guidance can be designed separately later.
+
 ## Moving findings
 
 Use the current dnd-kit React package for pointer, touch and keyboard input.
@@ -30,6 +36,11 @@ Moving changes status only. Preserve server ordering within columns, bounded
 pagination, filters, archived-service restrictions and existing authorisation.
 No schema migration, manual ranking or new backend endpoint is needed. Both
 menus and drops call the existing Server Action with the finding's version.
+
+Lift the original tile out of flow without leaving a visible copy or a
+placeholder gap. Cards beneath it close the gap using short transform-based
+motion, and return to their original positions on cancellation. Reduced motion
+skips this animation. Visual reflow never changes DOM or persisted ordering.
 
 Share one pending update gate between both interaction methods. Preserve the
 source card and server-owned cursors until the authoritative refresh arrives.

@@ -4,15 +4,21 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Inline, Stack } from "@/components/layout";
 import { StatusBoard } from "@/components/layout/board";
-import { Badge } from "@/components/ui/badge";
+import { Badge, SeverityBadge, type SeverityTone } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   BoardCardTitle,
   BoardDragCard,
+  BoardDragList,
   BoardDragProvider,
 } from "@/components/ui/board-drag";
 import { FormMessage } from "@/components/ui/form-message";
-import { Menu, MenuItem, MenuPopup, MenuTrigger } from "@/components/ui/menu";
+import {
+  Menu,
+  MenuItem,
+  MenuPopup,
+  MenuIconTrigger,
+} from "@/components/ui/menu";
 import { Text } from "@/components/ui/typography";
 import type {
   BoardFinding,
@@ -21,8 +27,7 @@ import type {
 } from "../board-data";
 import type { BoardFilters, FindingStatus } from "../board-validation";
 import { changeBoardFindingStatusAction } from "../board-actions";
-import { statuses, statusLabels } from "../validation";
-import { FindingBadges } from "./FindingBadges";
+import { statuses, statusLabels, severityLabels } from "../validation";
 
 type Columns = Awaited<ReturnType<typeof getFindingBoard>>["columns"];
 type StatusFeedback =
@@ -134,11 +139,6 @@ export function FindingBoard({
   }, [feedback?.success, feedback?.error]);
   return (
     <Stack grow>
-      {!feedback && !pending && (
-        <FormMessage tone="info">
-          Drag a finding to change its status, or use its menu.
-        </FormMessage>
-      )}
       {pending && !feedback && mutation && (
         <FormMessage tone="info">
           Updating {mutation.title} to {statusLabels[mutation.status]}…
@@ -170,7 +170,6 @@ export function FindingBoard({
         key={revisionKey}
         {...props}
         pending={pending || refreshing || conflict}
-        pendingId={pending ? mutation?.id : undefined}
         changeStatus={changeStatus}
       />
     </Stack>
@@ -181,14 +180,12 @@ function FindingBoardCard({
   slug,
   finding,
   pending,
-  updating,
   dragging,
   changeStatus,
 }: {
   slug: string;
   finding: BoardFinding;
   pending: boolean;
-  updating: boolean;
   dragging: boolean;
   changeStatus: StatusChange;
 }) {
@@ -199,6 +196,25 @@ function FindingBoardCard({
       status={finding.status}
       title={finding.title}
       disabled={finding.archived || pending}
+      actions={
+        <Menu>
+          <MenuIconTrigger
+            disabled={finding.archived || pending || dragging}
+            aria-label={`Change status for ${finding.title}`}
+          />
+          <MenuPopup align="end">
+            {statuses.map((status) => (
+              <MenuItem
+                key={status}
+                disabled={status === finding.status || pending}
+                onClick={() => changeStatus(finding, status)}
+              >
+                {statusLabels[status]}
+              </MenuItem>
+            ))}
+          </MenuPopup>
+        </Menu>
+      }
     >
       <Stack gap="sm">
         <BoardCardTitle
@@ -206,32 +222,15 @@ function FindingBoardCard({
         >
           {finding.title}
         </BoardCardTitle>
-        <FindingBadges severity={finding.severity} status={finding.status} />
-        <Text size="sm" tone="muted">
+        <Inline>
+          <SeverityBadge severity={finding.severity as SeverityTone}>
+            {severityLabels[finding.severity as keyof typeof severityLabels]}
+          </SeverityBadge>
+          {finding.archived && <Badge tone="muted">Archived service</Badge>}
+        </Inline>
+        <Text size="xs" tone="muted">
           {finding.serviceName}
         </Text>
-        <Inline>
-          {finding.archived && <Badge tone="muted">Archived service</Badge>}
-          <Menu>
-            <MenuTrigger
-              disabled={finding.archived || pending || dragging}
-              aria-label={`Change status for ${finding.title}`}
-            >
-              {updating ? "Updating…" : "Change status"}
-            </MenuTrigger>
-            <MenuPopup>
-              {statuses.map((status) => (
-                <MenuItem
-                  key={status}
-                  disabled={status === finding.status || pending}
-                  onClick={() => changeStatus(finding, status)}
-                >
-                  {statusLabels[status]}
-                </MenuItem>
-              ))}
-            </MenuPopup>
-          </Menu>
-        </Inline>
       </Stack>
     </BoardDragCard>
   );
@@ -243,11 +242,9 @@ function FindingBoardCollection({
   initialColumns,
   scopeKey,
   pending,
-  pendingId,
   changeStatus,
 }: BoardProps & {
   pending: boolean;
-  pendingId?: string;
   changeStatus: StatusChange;
 }) {
   const router = useRouter();
@@ -380,7 +377,7 @@ function FindingBoardCollection({
           label: `${statusLabels[column.status]} (${column.total})`,
           regionLabel: `${statusLabels[column.status]} findings`,
           content: (
-            <Stack>
+            <BoardDragList>
               {column.findings.map((finding) => (
                 <FindingBoardCard
                   key={finding.id}
@@ -388,7 +385,6 @@ function FindingBoardCollection({
                   finding={finding}
                   pending={pending}
                   dragging={dragging}
-                  updating={pendingId === finding.id}
                   changeStatus={moveFinding}
                 />
               ))}
@@ -407,7 +403,7 @@ function FindingBoardCollection({
                   {loading[column.status] ? "Loading…" : "Load more"}
                 </Button>
               )}
-            </Stack>
+            </BoardDragList>
           ),
         }))}
       />

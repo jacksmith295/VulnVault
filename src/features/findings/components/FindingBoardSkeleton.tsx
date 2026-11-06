@@ -10,7 +10,6 @@ import {
 import { LoadingRegion } from "@/components/layout/loading";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FormMessage } from "@/components/ui/form-message";
 import { statuses, statusLabels } from "../validation";
 
 export function FindingBoardSkeleton({
@@ -46,9 +45,6 @@ export function FindingBoardSkeleton({
         </>
       )}
       <Stack grow>
-        <FormMessage tone="info">
-          Drag a finding to change its status, or use its menu.
-        </FormMessage>
         <StatusBoard
           initialStatus={initialStatus}
           columns={statuses.map((status) => ({

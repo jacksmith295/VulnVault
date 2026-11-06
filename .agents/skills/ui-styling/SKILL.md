@@ -35,6 +35,7 @@ description: Build or change VulnVault pages, forms, shared components, styling,
 - Define timing and easing in shared theme tokens and apply motion in shared component definitions. Prefer short, restrained transform/opacity transitions and focused control-state transitions. Avoid `transition-all`, animated layout dimensions, decorative page/card entrance sequences, and new animation dependencies without a demonstrated need.
 - Follow the installed Base UI lifecycle and gesture variables for entrance and exit states. Preserve overlay mounting through exit, focus return, dismissal, scroll unlocking, and rapid reopen behaviour. Keep control state outside animated overlays and never delay validation or authorisation feedback for an animation.
 - Respect `prefers-reduced-motion`: remove nonessential movement and finish state changes promptly. Verify actual entrance and exit movement with normal motion, plus reduced-motion completion, keyboard/nested overlays, rapid toggles, and breakpoint changes. CSS class presence alone does not prove an animation works.
+- On the findings board, lift a single tile without a visible source copy or placeholder gap. Use short transform-based sibling reflow while preserving DOM and server ordering. Cancel owned animations on cleanup. Keep action controls compact and omit idle instruction panels; pending and result feedback should describe actual activity.
 
 ## Preserve behaviour and accessibility
 
