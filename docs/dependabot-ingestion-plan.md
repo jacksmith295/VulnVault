@@ -2,6 +2,8 @@
 
 Status: implemented and independently reviewed for PR preparation. The user authorised planning, review, implementation, iteration, and a PR, including higher-effort agents when warranted.
 
+The [service integration workflow](service-integrations-plan.md) supersedes this slice's workspace-level repository UI. Installation authorisation remains shared; repository setup, controls and status belong to each service.
+
 ## First working slice
 
 Connect a dedicated GitHub App to a workspace, link existing GitHub repository URLs to that installation, and import real Dependabot dependency alerts into service findings. Add automatic local polling and Sync now using the same bounded sync path. Retain support for future providers through explicit provider/source identities, without a plugin framework, message broker, cloud service, or webhook endpoint.

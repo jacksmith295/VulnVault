@@ -20,6 +20,7 @@ function refresh(slug: string) {
 
 export async function connectRepositoryAction(
   slug: string,
+  serviceId: string,
   integrationId: string,
   _previous: IntegrationFormState,
   form: FormData,
@@ -28,7 +29,7 @@ export async function connectRepositoryAction(
   if (values.length !== 1 || typeof values[0] !== "string" || !values[0]) {
     return { error: "Choose an existing service repository." };
   }
-  const result = await connectRepository(slug, integrationId, values[0]);
+  const result = await connectRepository(slug, serviceId, integrationId, values[0]);
   if ("error" in result) return result;
   refresh(slug);
   return { error: "", message: "Repository connected." };
@@ -55,13 +56,14 @@ export async function setIntegrationEnabledAction(
 
 export async function setRepositoryEnabledAction(
   slug: string,
+  serviceId: string,
   id: string,
   version: number,
   enabled: boolean,
   _previous: IntegrationFormState,
 ): Promise<IntegrationFormState> {
   void _previous;
-  const result = await setRepositoryEnabled(slug, id, version, enabled);
+  const result = await setRepositoryEnabled(slug, serviceId, id, version, enabled);
   if ("error" in result) return result;
   refresh(slug);
   return {
@@ -74,11 +76,12 @@ export async function setRepositoryEnabledAction(
 
 export async function syncRepositoryAction(
   slug: string,
+  serviceId: string,
   id: string,
   _previous: IntegrationFormState,
 ): Promise<IntegrationFormState> {
   void _previous;
-  const result = await syncRepositoryNow(slug, id);
+  const result = await syncRepositoryNow(slug, serviceId, id);
   refresh(slug);
   if (result.status === "success") {
     return {

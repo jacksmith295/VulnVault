@@ -3,6 +3,7 @@ import { reportDatabaseFailure } from "@/lib/server/diagnostics";
 import { randomUUID } from "node:crypto";
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
+import { notFound } from "next/navigation";
 import {
   integrationRepository,
   service,
@@ -33,57 +34,132 @@ export type IntegrationResult =
     }
   | { error: string; conflict?: boolean };
 
+// Explicit projections keep credentials and lease ownership out of browser props.
+const connectionProjection = {
+  id: workspaceIntegration.id,
+  provider: workspaceIntegration.provider,
+  appId: workspaceIntegration.appId,
+  installationId: workspaceIntegration.installationId,
+  accountLogin: workspaceIntegration.accountLogin,
+  accountType: workspaceIntegration.accountType,
+  enabled: workspaceIntegration.enabled,
+  version: workspaceIntegration.version,
+  blockedUntil: workspaceIntegration.blockedUntil,
+};
+const mappingProjection = {
+  id: integrationRepository.id,
+  integrationId: integrationRepository.integrationId,
+  serviceId: integrationRepository.serviceId,
+  repositoryLinkId: integrationRepository.repositoryLinkId,
+  repositoryId: integrationRepository.repositoryId,
+  fullName: integrationRepository.fullName,
+  enabled: integrationRepository.enabled,
+  version: integrationRepository.version,
+  nextAttemptAt: integrationRepository.nextAttemptAt,
+  lastAttemptAt: integrationRepository.lastAttemptAt,
+  lastSuccessAt: integrationRepository.lastSuccessAt,
+  errorCode: integrationRepository.errorCode,
+  failures: integrationRepository.failures,
+  leaseExpiresAt: integrationRepository.leaseExpiresAt,
+};
+
 export async function getIntegrationPageData(slug: string) {
   const workspace = await requireWorkspace(slug, ["owner", "admin"]);
   const integrations = await db
-    .select()
+    .select(connectionProjection)
     .from(workspaceIntegration)
     .where(eq(workspaceIntegration.workspaceId, workspace.id))
     .orderBy(asc(workspaceIntegration.accountLogin));
-  const mappings = await db
-    .select({
-      mapping: integrationRepository,
-      serviceName: service.name,
-      repositoryUrl: serviceRepository.url,
-      archivedAt: service.archivedAt,
-    })
-    .from(integrationRepository)
-    .innerJoin(service, eq(service.id, integrationRepository.serviceId))
-    .innerJoin(
-      serviceRepository,
-      eq(serviceRepository.id, integrationRepository.repositoryLinkId),
-    )
-    .where(eq(integrationRepository.workspaceId, workspace.id))
-    .orderBy(asc(service.name), asc(integrationRepository.fullName));
-  const repositories = (
-    await db
-      .select({
-        id: serviceRepository.id,
-        serviceId: service.id,
-        serviceName: service.name,
-        url: serviceRepository.url,
-      })
-      .from(serviceRepository)
-      .innerJoin(service, eq(service.id, serviceRepository.serviceId))
-      .where(
-        and(eq(service.workspaceId, workspace.id), isNull(service.archivedAt)),
-      )
-  ).filter((row) => parseGithubRepositoryUrl(row.url));
-  return {
-    workspace,
-    integrations: integrations.map((integration) => ({
-      ...integration,
-      repositories: mappings
-        .filter((row) => row.mapping.integrationId === integration.id)
-        .map(({ mapping, ...details }) => {
-          const { leaseToken: _leaseToken, ...safeMapping } = mapping;
-          void _leaseToken;
-          return { ...safeMapping, ...details };
-        }),
-    })),
-    repositories,
-  };
+  return { workspace, integrations };
 }
+export type IntegrationPageData = Awaited<
+  ReturnType<typeof getIntegrationPageData>
+>;
+
+export async function getServiceIntegrationPageData(
+  slug: string,
+  serviceId: string,
+) {
+  const workspace = await requireWorkspace(slug, ["owner", "admin"]);
+  if (!validId(serviceId)) notFound();
+  return db.transaction(
+    async (tx) => {
+      const [found] = await tx
+        .select({
+          id: service.id,
+          name: service.name,
+          description: service.description,
+          archivedAt: service.archivedAt,
+          createdAt: service.createdAt,
+          updatedAt: service.updatedAt,
+          version: service.version,
+        })
+        .from(service)
+        .where(
+          and(eq(service.id, serviceId), eq(service.workspaceId, workspace.id)),
+        );
+      if (!found) notFound();
+      const integrations = await tx
+        .select(connectionProjection)
+        .from(workspaceIntegration)
+        .where(eq(workspaceIntegration.workspaceId, workspace.id))
+        .orderBy(asc(workspaceIntegration.accountLogin));
+      const mappings = await tx
+        .select({
+          ...mappingProjection,
+          serviceName: service.name,
+          repositoryUrl: serviceRepository.url,
+          archivedAt: service.archivedAt,
+        })
+        .from(integrationRepository)
+        .innerJoin(service, eq(service.id, integrationRepository.serviceId))
+        .innerJoin(
+          serviceRepository,
+          and(
+            eq(serviceRepository.id, integrationRepository.repositoryLinkId),
+            eq(serviceRepository.serviceId, service.id),
+          ),
+        )
+        .where(
+          and(
+            eq(integrationRepository.workspaceId, workspace.id),
+            eq(integrationRepository.serviceId, serviceId),
+            eq(service.workspaceId, workspace.id),
+          ),
+        )
+        .orderBy(asc(integrationRepository.fullName));
+      const repositories = await tx
+        .select({
+          id: serviceRepository.id,
+          serviceId: service.id,
+          serviceName: service.name,
+          url: serviceRepository.url,
+        })
+        .from(serviceRepository)
+        .innerJoin(service, eq(service.id, serviceRepository.serviceId))
+        .where(
+          and(eq(service.id, serviceId), eq(service.workspaceId, workspace.id)),
+        )
+        .orderBy(asc(serviceRepository.url));
+      return {
+        workspace,
+        service: found,
+        repositories,
+        integrations: integrations.map((integration) => ({
+          ...integration,
+          currentApp: integration.appId === process.env.GITHUB_APP_ID,
+          repositories: mappings.filter(
+            (mapping) => mapping.integrationId === integration.id,
+          ),
+        })),
+      };
+    },
+    { isolationLevel: "repeatable read", accessMode: "read only" },
+  );
+}
+export type ServiceIntegrationPageData = Awaited<
+  ReturnType<typeof getServiceIntegrationPageData>
+>;
 
 export async function setIntegrationEnabled(
   slug: string,
@@ -124,12 +200,14 @@ export async function setIntegrationEnabled(
 }
 export async function setRepositoryEnabled(
   slug: string,
+  serviceId: string,
   id: string,
   version: number,
   enabled: boolean,
 ): Promise<IntegrationResult> {
   const { user } = await requireSession();
   if (
+    !validId(serviceId) ||
     !validId(id) ||
     !versionSchema.safeParse(version).success ||
     typeof enabled !== "boolean"
@@ -145,6 +223,7 @@ export async function setRepositoryEnabled(
         .where(
           and(
             eq(integrationRepository.id, id),
+            eq(integrationRepository.serviceId, serviceId),
             eq(integrationRepository.workspaceId, workspace.id),
           ),
         );
@@ -155,7 +234,7 @@ export async function setRepositoryEnabled(
         .from(service)
         .where(
           and(
-            eq(service.id, candidate.serviceId),
+            eq(service.id, serviceId),
             eq(service.workspaceId, workspace.id),
           ),
         )
@@ -182,6 +261,7 @@ export async function setRepositoryEnabled(
         .where(
           and(
             eq(integrationRepository.id, id),
+            eq(integrationRepository.serviceId, serviceId),
             eq(integrationRepository.workspaceId, workspace.id),
             eq(integrationRepository.version, version),
           ),
@@ -196,11 +276,17 @@ export async function setRepositoryEnabled(
 }
 export async function connectRepository(
   slug: string,
+  serviceId: string,
   integrationId: string,
   repositoryLinkId: string,
 ): Promise<IntegrationResult> {
   const { user } = await requireSession();
-  if (!validId(integrationId) || !validId(repositoryLinkId)) return unavailable;
+  if (
+    !validId(serviceId) ||
+    !validId(integrationId) ||
+    !validId(repositoryLinkId)
+  )
+    return unavailable;
   const workspace = await requireWorkspace(slug, ["owner", "admin"]);
   const [grant] = await db
     .select()
@@ -219,6 +305,7 @@ export async function connectRepository(
       and(
         eq(service.workspaceId, workspace.id),
         eq(serviceRepository.id, repositoryLinkId),
+        eq(service.id, serviceId),
         isNull(service.archivedAt),
       ),
     );
@@ -248,7 +335,7 @@ export async function connectRepository(
       if (
         !currentWorkspace ||
         currentWorkspace.id !== workspace.id ||
-        !(await lockActiveService(tx, workspace.id, link.serviceId))
+        !(await lockActiveService(tx, workspace.id, serviceId))
       )
         return unavailable;
       const [currentGrant] = await tx
@@ -267,12 +354,13 @@ export async function connectRepository(
         .where(
           and(
             eq(serviceRepository.id, repositoryLinkId),
-            eq(serviceRepository.serviceId, link.serviceId),
+            eq(serviceRepository.serviceId, serviceId),
           ),
         );
       if (
         !currentGrant?.enabled ||
         currentGrant.version !== grant.version ||
+        currentGrant.installationId !== grant.installationId ||
         process.env.GITHUB_APP_ID !== currentGrant.appId ||
         currentLink?.url !== link.repository.url
       )
@@ -290,7 +378,7 @@ export async function connectRepository(
           id,
           workspaceId: workspace.id,
           integrationId: grant.id,
-          serviceId: link.serviceId,
+          serviceId,
           repositoryLinkId,
           repositoryId: repository.id,
           fullName: repository.fullName,
@@ -304,9 +392,13 @@ export async function connectRepository(
     };
   }
 }
-export async function syncRepositoryNow(slug: string, mappingId: string) {
+export async function syncRepositoryNow(
+  slug: string,
+  serviceId: string,
+  mappingId: string,
+) {
   const { user } = await requireSession();
-  if (!validId(mappingId))
+  if (!validId(serviceId) || !validId(mappingId))
     return { status: "unavailable" as const, error: unavailable.error };
-  return syncMapping(mappingId, { slug, userId: user.id });
+  return syncMapping(mappingId, { slug, serviceId, userId: user.id });
 }

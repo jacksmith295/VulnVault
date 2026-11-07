@@ -37,7 +37,7 @@ async function main() {
     `GitHub installation connected. Repository mappings: ${result.mappedRepositories ?? 0}.`,
   );
   console.log(
-    "Open the workspace Integrations page to review the scope and sync, or run the worker with --once --workspace <slug>.",
+    "Open a service's Integrations page to review repository scope and sync, or run the worker with --once --workspace <slug>.",
   );
 }
 

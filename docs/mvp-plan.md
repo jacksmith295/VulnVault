@@ -28,27 +28,21 @@ The [local recovery runbook](local-recovery.md) and synthetic browser rehearsals
 
 The [triage discovery slice](triage-discovery-plan.md) is merged in PR #22: shared board/service search across title, package, GHSA and CVE, source and upstream-state filters, and compact service lists with 20-row pages. Local triage decisions remain independent of upstream facts; reconciliation actions require a separate agreement.
 
+The [one-command PC startup](local-startup.md) slice is merged in PR #23. It reuses the existing Docker/Tailscale installation and image, offers explicit rebuilding, and supervises the configured host worker. Sudo is permitted only to start a stopped standard local Docker daemon. No migrations, data resets or Tailscale enrolment are included.
+
 ## Implemented, awaiting merge
 
-The owner prioritised [one-command PC startup](local-startup.md), now implemented, independently reviewed and locally verified on the feature branch, awaiting merge: reuse the existing Docker/Tailscale installation and image, offer explicit rebuilding, and supervise the configured host worker. Sudo is permitted only to start a stopped standard local Docker daemon. No migrations, data resets or Tailscale enrolment are included.
+The [service integration workflow](service-integrations-plan.md) is implemented, independently reviewed and locally verified on the feature branch, awaiting merge. Repository connections, sync controls and status move into each service; GitHub is recommended from compatible linked URLs; installation setup/global controls remain workspace connections. Existing roles, archive rules and ingestion behaviour remain.
 
 ## Next delivery slices
 
-### 1. Service integration workflow design (proposed)
-
-Agree the service-level setup and recommendation workflow described below, including the shared workspace installation boundary. This follows PC startup without expanding providers or changing ingestion policy.
-
-### 2. Separate real-project follow-up
+### 1. Real-project follow-up
 
 The recovery slice deferred the real-project import, triage, upstream remediation, refreshed upstream state, and explicit local resolve/reopen trial. VulnVault's three advisories lacked compatible fixes at the [last dependency review](dependency-review.md); the synthetic rehearsal does not establish real-project remediation or live polling recovery. Revisit dependencies when compatible fixes or affected usage change, preserving the [authentication hardening checks](auth-hardening.md).
 
 Use the runbook with an actual private archive and agree any live upgrade/cutover separately, including application/worker restart and polling recovery. Manual findings, permissions, provenance, local decisions, and deduplication must survive. Use the trial to agree solo MVP completion and identify remaining usability needs.
 
 Separate quick unit-test setup from database setup when demonstrated development needs justify it.
-
-## Planned improvements
-
-- **Service-level integrations and recommendations:** Move repository integration setup, sync controls, and status into each service. Prioritise compatible integrations from its linked repository URLs: for example, a linked VulnVault GitHub repository should put GitHub integration at the top. Recommendations must distinguish compatibility from actual configuration/access. Retain shared workspace installation authorisation where needed and existing permissions; agree those boundaries before implementation.
 
 ## Later decisions
 

@@ -38,7 +38,7 @@ export type SyncResult = {
   imported?: number;
   error?: string;
 };
-type Human = { slug: string; userId: string };
+type Human = { slug: string; userId: string; serviceId: string };
 const unavailable: SyncResult = {
   status: "unavailable",
   error: "Connection unavailable, disabled, or its service is archived.",
@@ -56,7 +56,12 @@ async function claimMapping(
   const [candidate] = await db
     .select()
     .from(integrationRepository)
-    .where(eq(integrationRepository.id, id));
+    .where(
+      and(
+        eq(integrationRepository.id, id),
+        human ? eq(integrationRepository.serviceId, human.serviceId) : undefined,
+      ),
+    );
   if (!candidate) return unavailable;
   return db.transaction(async (tx) => {
     const workspace = human
@@ -89,6 +94,7 @@ async function claimMapping(
         and(
           eq(integrationRepository.id, id),
           eq(integrationRepository.workspaceId, workspace.id),
+          human ? eq(integrationRepository.serviceId, human.serviceId) : undefined,
         ),
       )
       .for("update");

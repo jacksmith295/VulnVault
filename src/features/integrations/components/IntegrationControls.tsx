@@ -17,10 +17,10 @@ import {
 
 function ActionFeedback({
   state,
-  slug,
+  href,
 }: {
   state: IntegrationFormState;
-  slug: string;
+  href: string;
 }) {
   return (
     <>
@@ -29,7 +29,7 @@ function ActionFeedback({
         <FormMessage tone="success">{state.message}</FormMessage>
       )}
       {state.conflict && (
-        <TextLink href={`/w/${slug}/integrations`} reloadDocument>
+        <TextLink href={href} reloadDocument>
           Reload latest connection settings
         </TextLink>
       )}
@@ -44,20 +44,30 @@ export function IntegrationControl({
   enabled,
   kind,
   disabled = false,
+  serviceId,
 }: {
   slug: string;
   id: string;
   version: number;
   enabled: boolean;
-  kind: "integration" | "repository" | "sync";
   disabled?: boolean;
-}) {
+} & (
+  | { kind: "integration"; serviceId?: never }
+  | { kind: "repository" | "sync"; serviceId: string }
+)) {
   const operation =
     kind === "sync"
-      ? syncRepositoryAction.bind(null, slug, id)
+      ? syncRepositoryAction.bind(null, slug, serviceId!, id)
       : kind === "integration"
         ? setIntegrationEnabledAction.bind(null, slug, id, version, !enabled)
-        : setRepositoryEnabledAction.bind(null, slug, id, version, !enabled);
+        : setRepositoryEnabledAction.bind(
+            null,
+            slug,
+            serviceId!,
+            id,
+            version,
+            !enabled,
+          );
   const [state, action, pending] = useActionState(operation, { error: "" });
   const label =
     kind === "sync"
@@ -68,17 +78,26 @@ export function IntegrationControl({
       <Button type="submit" variant="outline" disabled={pending || disabled}>
         {pending ? (kind === "sync" ? "Syncing..." : "Updating...") : label}
       </Button>
-      <ActionFeedback state={state} slug={slug} />
+      <ActionFeedback
+        state={state}
+        href={
+          serviceId
+            ? `/w/${slug}/services/${serviceId}/integrations`
+            : `/w/${slug}/integrations`
+        }
+      />
     </FormLayout>
   );
 }
 
 export function ConnectRepositoryForm({
   slug,
+  serviceId,
   integrationId,
   repositories,
 }: {
   slug: string;
+  serviceId: string;
   integrationId: string;
   repositories: { id: string; serviceName: string; url: string }[];
 }) {
@@ -90,10 +109,10 @@ export function ConnectRepositoryForm({
   // unrelated server refreshes preserve a still available repository selection.
   if (repository !== selectedRepository) setRepository(selectedRepository);
   const [state, action, pending] = useActionState(
-    connectRepositoryAction.bind(null, slug, integrationId),
+    connectRepositoryAction.bind(null, slug, serviceId, integrationId),
     { error: "" },
   );
-  const id = `repository-${integrationId}`;
+  const id = `repository-${serviceId}-${integrationId}`;
   return (
     <FormLayout action={action} width="narrow" aria-busy={pending}>
       <FormField
@@ -118,7 +137,10 @@ export function ConnectRepositoryForm({
         <Button type="submit" disabled={pending || selectedRepository === null}>
           {pending ? "Connecting..." : "Connect repository"}
         </Button>
-        <ActionFeedback state={state} slug={slug} />
+        <ActionFeedback
+          state={state}
+          href={`/w/${slug}/services/${serviceId}/integrations`}
+        />
       </Stack>
     </FormLayout>
   );

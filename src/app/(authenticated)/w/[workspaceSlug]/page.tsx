@@ -40,7 +40,7 @@ export default async function WorkspacePage({
               <>
                 <AppLink href={`/w/${workspace.slug}/groups`}>Groups</AppLink>
                 <AppLink href={`/w/${workspace.slug}/integrations`}>
-                  Integrations
+                  Connections
                 </AppLink>
               </>
             )}
