@@ -43,7 +43,7 @@ test("rejects staged HTML even when the working copy is fixed, without changing 
   f.write(file, valid);
   const result = f.run();
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /Compose shared TSX components/);
+  assert.match(result.stderr, /Compose TSX components/);
   assert.match(result.stderr, /stage the fixes/);
   assert.equal(f.git("show", `:${file}`), invalid);
   assert.equal(readFileSync(path.join(f.root, file), "utf8"), valid);
@@ -62,7 +62,7 @@ test("JSX files enforce the same component policy as TSX files", (t) => {
   f.stage(file, invalid);
   const rejected = f.run();
   assert.equal(rejected.status, 1);
-  assert.match(rejected.stderr, /Compose shared TSX components/);
+  assert.match(rejected.stderr, /Compose TSX components/);
   f.stage(file, 'function Component() { return null; }\nexport default function Feature() { return <Component />; }\n');
   assert.equal(f.run().status, 0);
 });
@@ -74,12 +74,29 @@ test("allows shared HTML and the root document layout", (t) => {
   assert.equal(f.run().status, 0);
 });
 
+test("allows feature component markup but still checks ordinary lint rules", (t) => {
+  const f = fixture(t);
+  const file = "src/features/example/components/nested/Panel.tsx";
+  f.stage(file, 'export default function Panel() { return <section className="bg-card"><p>Example</p></section>; }\n');
+  assert.equal(f.run().status, 0);
+  f.stage(file, 'export default function Panel() { return <section className="bg-card">{[1].map(() => <p>Example</p>)}</section>; }\n');
+  const rejected = f.run();
+  assert.equal(rejected.status, 1);
+  assert.match(rejected.stderr, /react\/jsx-key/);
+});
+
+test("route composition still rejects styling overrides on components", (t) => {
+  const f = fixture(t);
+  f.stage("src/app/page.tsx", 'function Panel() { return null; }\nexport default function Page() { return <Panel className="p-4" />; }\n');
+  assert.equal(f.run().status, 1);
+});
+
 test("rejects lowercase custom HTML and className overrides using the existing policy", (t) => {
   const f = fixture(t);
   f.stage("src/features/example.tsx", 'export default function Feature() { return <custom-element className="p-4" />; }\n');
   const result = f.run();
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /Compose shared TSX components/);
+  assert.match(result.stderr, /Compose TSX components/);
   assert.match(result.stderr, /Use component variants/);
 });
 
@@ -92,7 +109,7 @@ test("handles renamed paths containing spaces and newlines, and skips deletions"
   f.git("mv", "src/app/original.tsx", renamed);
   const rejected = f.run();
   assert.equal(rejected.status, 1);
-  assert.match(rejected.stderr, /Compose shared TSX components/);
+  assert.match(rejected.stderr, /Compose TSX components/);
   f.git("rm", "-f", "--", renamed);
   assert.equal(f.run().status, 0);
 });
@@ -119,7 +136,7 @@ test("checks a symlink replaced with a regular TSX file", (t) => {
   assert.equal(f.git("diff", "--cached", "--name-status").trim(), `T\t${file}`);
   const result = f.run();
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /Compose shared TSX components/);
+  assert.match(result.stderr, /Compose TSX components/);
 });
 
 test("fails closed for an unmerged index", (t) => {
@@ -148,7 +165,7 @@ test("fails closed when dependencies are unavailable", (t) => {
 test("the executable hook blocks a real commit", (t) => {
   const f = fixture(t);
   f.stage("src/app/page.tsx", invalid);
-  assert.throws(() => f.git("commit", "--quiet", "-m", "should fail"), /Compose shared TSX components/);
+  assert.throws(() => f.git("commit", "--quiet", "-m", "should fail"), /Compose TSX components/);
   assert.equal(f.git("diff", "--cached", "--name-only").trim(), "src/app/page.tsx");
 });
 

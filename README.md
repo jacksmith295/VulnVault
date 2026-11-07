@@ -137,7 +137,7 @@ The [diagnostics helper](src/lib/server/diagnostics.ts) emits only allowlisted o
 
 ## UI and themes
 
-Light, Dark and System preferences persist without discarding unsaved form state. The board uses fluid columns or mobile status tabs, responsive filters, severity labels/colours and drag or menu status changes. Shared components own current HTML/styling under the enforced ESLint policy.
+Light, Dark and System preferences persist without discarding unsaved form state. The board uses fluid columns or mobile status tabs, responsive filters, severity labels/colours and drag or menu status changes. Shared and feature component definitions own HTML/styling; routes compose them.
 
 The UI targets WCAG 2.2 AA. The [UI skill](.agents/skills/ui-styling/SKILL.md) routes to composition, loading, motion and state contracts; the [accessibility review](docs/accessibility-review.md) records coverage and manual limits.
 
@@ -151,6 +151,6 @@ npm run hooks:check
 npm run test:hooks
 ```
 
-The hook lints staged JSX/TSX under `src/app` and `src/features`. Current rules reject native HTML and cosmetic `className` overrides there, with shared UI/layout definitions and the root document layout exempt. ESLint errors and warnings block commits.
+The hook lints staged JSX/TSX under `src/app` and `src/features`. Composition rules reject native HTML and cosmetic `className` overrides outside component definitions. Shared UI/layout, `src/features/*/components` and the root document layout are exempt from those two restrictions. Other ESLint rules still apply to feature components. ESLint errors and warnings block commits.
 
 Only staged source is checked; partially staged working files are not edited or stashed. ESLint configuration/dependencies come from the working tree. Unresolved merges or unavailable checks fail. The installer preserves custom hooks and reports conflicts; integrate explicitly rather than overwriting them. See [AGENTS.md](AGENTS.md) for review and PR policy.

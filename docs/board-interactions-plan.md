@@ -24,7 +24,7 @@ guidance can be designed separately later.
 ## Moving findings
 
 Use the current dnd-kit React package for pointer, touch and keyboard input.
-Shared components own its DOM, styling, drag handles, targets and announcements.
+Finding feature components own its DOM, styling, drag handles, targets and announcements.
 Base UI continues to supply buttons, tabs and menus. A dedicated drag handle
 keeps finding links, menus, text selection and ordinary touch scrolling usable.
 The existing status menu remains an alternative that does not require dragging.

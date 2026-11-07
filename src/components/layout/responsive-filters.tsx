@@ -36,7 +36,10 @@ export function ResponsiveFilters({
       </DesktopFilters>
       <Drawer.Root open={open} onOpenChange={setOpen} swipeDirection="right">
         <MobileFilters>
-          <Drawer.Trigger render={<Button variant="outline" />}>
+          <Drawer.Trigger
+            id="mobile-filters-trigger"
+            render={<Button variant="outline" />}
+          >
             <SlidersHorizontal aria-hidden="true" />
             Filters ({appliedCount}){pending ? " · Applying…" : ""}
           </Drawer.Trigger>

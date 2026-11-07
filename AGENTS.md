@@ -48,7 +48,7 @@ Use the relevant skill:
 
 ## UI and verification
 
-Follow the UI skill for composition, accessibility, themes, loading and form-state preservation. The current ESLint rules keep native HTML and Tailwind classes in shared UI/layout definitions, with the root document layout exempt. Pages and features compose those components; a future rule change must update instructions and enforcement together.
+Follow the UI skill for composition, accessibility, themes, loading and form-state preservation. Routes compose components; shared UI/layout and `src/features/*/components` definitions may own semantic HTML and Tailwind classes. Reuse shared controls and theme tokens; keep domain-specific presentation with its feature. ESLint enforces composition outside those definitions, with the root document layout exempt.
 
 Run lint and TypeScript checks for relevant application changes, and a production build when appropriate. Add meaningful tests for business rules, permissions, persistence and important failures, including authentication/authorisation failures. Check affected user flows in a browser when available; otherwise state concrete manual checks still needed. For documentation-only changes, verify links, commands, consistency and any changed skills.
 

@@ -9,8 +9,6 @@
 !postcss.config.mjs
 !src/
 !src/**
-!public/
-!public/**
 !scripts/
 !scripts/install-hooks.mjs
 

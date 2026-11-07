@@ -27,8 +27,8 @@ import {
   PointerActivationConstraints,
 } from "@dnd-kit/dom";
 import { GripVertical } from "lucide-react";
-import { Button } from "./button";
-import { TextLink } from "./link";
+import { Button } from "@/components/ui/button";
+import { TextLink } from "@/components/ui/link";
 import { cn } from "@/lib/utils";
 
 const DragContext = createContext({ dragging: false, disabled: true });

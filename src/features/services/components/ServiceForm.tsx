@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { fieldErrors } from "@/lib/form-validation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormField } from "@/components/ui/field";
@@ -41,9 +42,24 @@ function ServiceFormFields({ slug, service }: ServiceFormProps) {
   const [name, setName] = useState(service?.name ?? "");
   const [description, setDescription] = useState(service?.description ?? "");
   const [urls, setUrls] = useState(service?.repositoryUrls.join("\n") ?? "");
-  const [validation, setValidation] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const formRef = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    const fields = [
+      ["name", "service-name"],
+      ["description", "service-description"],
+      ["repositoryUrls", "service-repositories"],
+    ];
+    const firstInvalid = fields.find(([field]) => errors[field]);
+    if (firstInvalid) {
+      formRef.current
+        ?.querySelector<HTMLElement>(`#${firstInvalid[1]}`)
+        ?.focus();
+    }
+  }, [errors]);
   return (
     <FormLayout
+      ref={formRef}
       action={action}
       width="narrow"
       aria-busy={pending}
@@ -56,11 +72,11 @@ function ServiceFormFields({ slug, service }: ServiceFormProps) {
             .map((url) => url.trim())
             .filter(Boolean),
         });
-        setValidation(parsed.success ? "" : parsed.error.issues[0].message);
+        setErrors(parsed.success ? {} : fieldErrors(parsed.error.issues));
         if (!parsed.success) event.preventDefault();
       }}
     >
-      <FormField id="service-name" label="Name">
+      <FormField error={errors.name} id="service-name" label="Name">
         <Input
           id="service-name"
           name="name"
@@ -71,7 +87,11 @@ function ServiceFormFields({ slug, service }: ServiceFormProps) {
           onChange={(event) => setName(event.target.value)}
         />
       </FormField>
-      <FormField id="service-description" label="Description">
+      <FormField
+        error={errors.description}
+        id="service-description"
+        label="Description"
+      >
         <Textarea
           id="service-description"
           name="description"
@@ -83,6 +103,7 @@ function ServiceFormFields({ slug, service }: ServiceFormProps) {
       </FormField>
       <FormField
         id="service-repositories"
+        error={errors.repositoryUrls}
         label="Repository URLs"
         description="Optional. Enter up to 20 HTTP or HTTPS repository URLs, one per line. Include a repository path and omit credentials, query strings, and fragments."
       >
@@ -90,14 +111,11 @@ function ServiceFormFields({ slug, service }: ServiceFormProps) {
           id="service-repositories"
           name="repositoryUrls"
           rows={5}
-          aria-describedby="service-repositories-description"
           value={urls}
           onChange={(event) => setUrls(event.target.value)}
         />
       </FormField>
-      {(validation || state.error) && (
-        <FormMessage tone="error">{validation || state.error}</FormMessage>
-      )}
+      {state.error && <FormMessage tone="error">{state.error}</FormMessage>}
       {state.conflict && (
         <TextLink
           reloadDocument

@@ -5,8 +5,8 @@ import {
   DesktopFilters,
   MobileFilters,
   FilterGrid,
-  StatusBoard,
 } from "@/components/layout/board";
+import { StatusBoard } from "./StatusBoard";
 import { LoadingRegion } from "@/components/layout/loading";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";

@@ -20,7 +20,7 @@ This file owns capability status and priorities. Technical references describe c
 | [Recovery](local-recovery.md) | Private-backup runbook and synthetic restore/upgrade/login rehearsals. Actual private-archive recovery and live cutover are not established. |
 | [Verification](../.github/workflows/verification.yml) and [diagnostics](../src/lib/server/diagnostics.ts) | Disposable test infrastructure, CI lint/types/hook/startup/application/build/browser checks, and safe mutation failure categories. |
 
-The dated [dependency review](dependency-review.md) records three underlying open advisories. Dependency removal or upgrades need fresh audit and behaviour checks; the earlier lack of compatible upgrades does not rule out removing unnecessary dependencies.
+The dated [dependency review](dependency-review.md) records two underlying open advisories after the dependency cleanup on this branch. Dependency removal or upgrades need fresh audit and behaviour checks; the earlier lack of compatible upgrades does not rule out removing unnecessary dependencies.
 
 ## Cleanup sequence
 
@@ -29,8 +29,8 @@ Each group is a bounded scope to plan and verify before implementation. Grouping
 | Order | Group | Status and scope |
 | --- | --- | --- |
 | 1 | Working agreement and documentation | Implemented on the feature branch, awaiting merge: consolidated instructions, review effort proportional to risk, stale authorisations/status removed and current technical contracts retained. |
-| 2 | UI and dependencies | Planned next: revise feature-component HTML/styling boundaries with lint/hooks; remove unnecessary CSS packages/scaffold after verification; improve board paging focus/retry and field-associated errors; pass counts as data. |
-| 3 | Backend and tests | Planned: separate unit/persistence setup, remove duplicate GitHub token/metadata requests and consolidate repeated authorised reads without weakening mutation checks. Organisation-plugin removal is optional when next touching auth. |
+| 2 | UI and dependencies | Implemented on the feature branch, awaiting merge: feature-owned markup with matching lint/hooks, removed unused CSS packages/scaffold, board paging focus/retry, field-associated errors and numeric counts. Depends on Group 1. |
+| 3 | Backend and tests | Planned next: separate unit/persistence setup, remove duplicate GitHub token/metadata requests and consolidate repeated authorised reads without weakening mutation checks. Organisation-plugin removal is optional when next touching auth. |
 | 4 | Operations and repository controls | Planned: verify/enforce PR and CI requirements, simplify startup responsibilities while preserving safeguards, expose running app/worker revisions and remove obsolete worktrees/branches after checking unique work. |
 | 5 | Real-project validation | Planned: complete the remediation and actual private-archive trials below, then agree solo-MVP completion. |
 

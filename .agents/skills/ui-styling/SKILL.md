@@ -10,9 +10,9 @@ description: Build or change VulnVault pages, forms, shared components, styling,
 Inspect existing shared components before adding only the components or variants the agreed change needs.
 
 - Keep authorised data loading and composition in `src/app`; domain presentation and interaction belong in `src/features/*/components`.
-- Pages and features compose reusable TSX components. Shared `src/components/ui` and `src/components/layout` definitions own semantic HTML, Tailwind classes, and repeated page/form structure. The root document layout may contain its required `html` and `body`.
+- Routes compose TSX components. Shared UI/layout definitions own recurring controls and structure; `src/features/*/components` may own semantic HTML and Tailwind for domain presentation. Promote patterns to shared components only when other features need them. The root document layout may contain its required `html` and `body`.
 - Reuse styled interactive wrappers in `components/ui`; build new ones on installed Base UI primitives for keyboard, focus, and dismissal behaviour. Keep layout/text components server-compatible and add client boundaries only for interaction.
-- Expose typed variants for presentation differences instead of cosmetic `className` overrides in pages or features. Keep semantic theme tokens in `src/app/globals.css`.
+- Prefer typed variants for recurring presentation differences; avoid repeated cosmetic overrides at call sites. Keep semantic theme tokens in `src/app/globals.css`.
 - Preserve the green identity in both themes and the existing provider's persisted System, Light, and Dark preferences. Reuse severity badges/tokens consistently with visible labels; colour alone must not convey risk.
 
 ## State, loading, and layout

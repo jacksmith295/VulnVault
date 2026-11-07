@@ -490,6 +490,12 @@ test("member board hides restricted data and discards loaded cards after group r
         { exact: true },
       ),
     ).toBeVisible();
+    await expect(
+      memberPage.getByRole("searchbox", {
+        name: "Search findings",
+        exact: true,
+      }),
+    ).toBeFocused();
     await memberPage.goto(`${origin}${fixture.path}?group=${security}`);
     await expect(
       memberPage.getByText(
@@ -658,6 +664,12 @@ test("workspace home preserves filters while board results stream", async ({
     await expect(
       page.getByRole("status", { name: "Loading findings", exact: true }),
     ).toBeVisible();
+    await expect(
+      page
+        .getByRole("status", { name: "Loading findings", exact: true })
+        .locator('[aria-hidden="true"]')
+        .first(),
+    ).toHaveCSS("animation-name", "pulse");
     await expect(severity).toBeVisible();
     await expect(severity).toHaveAttribute(
       "data-persistent-filter",
@@ -1174,3 +1186,285 @@ test("overlays animate in and out without delaying reduced-motion interactions",
     await cleanup(pool, fixture, [owner.id]);
   }
 });
+
+test("board pagination retains rows after transient failures and completes without losing focus", async ({
+  page,
+  context,
+}) => {
+  const owner = await verifiedAccount(context);
+  const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+  const fixture = await workspaceFixture(page, pool);
+  try {
+    for (let number = 1; number <= 22; number++) {
+      await finding(
+        pool,
+        fixture.primary,
+        `Paging New ${number}`,
+        "new",
+        number,
+      );
+      await finding(
+        pool,
+        fixture.primary,
+        `Paging Triaged ${number}`,
+        "triaged",
+        number,
+      );
+    }
+    await page.setViewportSize({ width: 2560, height: 1440 });
+    await page.goto(fixture.path);
+    let failures = 0;
+    await page.route(`**/w/${fixture.slug}/findings/more?**`, async (route) => {
+      if (
+        new URL(route.request().url()).searchParams.get("column") !== "new" ||
+        failures >= 2
+      ) {
+        await route.continue();
+        return;
+      }
+      failures += 1;
+      if (failures === 1)
+        await route.fulfill({ status: 500, body: "Temporary failure" });
+      else await route.abort("failed");
+    });
+    await page
+      .getByRole("button", { name: "Load more New findings", exact: true })
+      .click();
+    const retry = page.getByRole("button", {
+      name: "Retry loading New findings",
+      exact: true,
+    });
+    await expect(retry).toBeVisible();
+    await expect(
+      column(page, "New").getByRole("link", { name: /^Paging New /u }),
+    ).toHaveCount(20);
+    await expect(
+      column(page, "New").getByRole("heading", {
+        name: "New (22)",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: "Load more Triaged findings", exact: true })
+      .click();
+    const triagedComplete = page.getByRole("button", {
+      name: "All findings loaded for Triaged",
+      exact: true,
+    });
+    await expect(triagedComplete).toBeFocused();
+    await expect(triagedComplete).toBeDisabled();
+    await expect(
+      column(page, "Triaged").getByRole("link", { name: /^Paging Triaged /u }),
+    ).toHaveCount(22);
+    await retry.click();
+    await expect(retry).toBeVisible();
+    await expect(
+      column(page, "New").getByRole("link", { name: /^Paging New /u }),
+    ).toHaveCount(20);
+    await retry.click();
+    const complete = page.getByRole("button", {
+      name: "All findings loaded for New",
+      exact: true,
+    });
+    await expect(complete).toBeFocused();
+    await expect(complete).toBeDisabled();
+    await expect(column(page, "New").getByRole("status")).toHaveText(
+      "All New findings loaded.",
+    );
+    await expect(
+      column(page, "New").getByRole("link", { name: /^Paging New /u }),
+    ).toHaveCount(22);
+  } finally {
+    await cleanup(pool, fixture, [owner.id]);
+  }
+});
+
+for (const resetKind of [
+  "reset",
+  "401",
+  "403",
+  "redirect",
+  "mobile",
+] as const) {
+  test(`board pagination clears stale rows on ${resetKind} and restores only removed focus`, async ({
+    page,
+    context,
+  }) => {
+    const owner = await verifiedAccount(context);
+    const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+    const fixture = await workspaceFixture(page, pool);
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let requested = false;
+    let deliverReset!: () => void;
+    const resetResponse = new Promise<void>((resolve) => {
+      deliverReset = resolve;
+    });
+    try {
+      for (let number = 1; number <= 21; number++)
+        await finding(
+          pool,
+          fixture.primary,
+          `Reset finding ${number}`,
+          "new",
+          number,
+        );
+      if (resetKind === "mobile")
+        await page.setViewportSize({ width: 390, height: 844 });
+      await page.goto(fixture.path);
+      await page.route(`**/w/${fixture.slug}?**`, async (route) => {
+        if (route.request().headers().rsc) await gate;
+        await route.continue();
+      });
+      await page.route(
+        `**/w/${fixture.slug}/findings/more?**`,
+        async (route) => {
+          requested = true;
+          await resetResponse;
+          if (resetKind === "redirect")
+            await route.fulfill({
+              status: 307,
+              headers: { location: "/login" },
+            });
+          else
+            await route.fulfill({
+              status: ["reset", "mobile"].includes(resetKind)
+                ? 200
+                : Number(resetKind),
+              contentType: "application/json",
+              body: JSON.stringify({ reset: true }),
+            });
+        },
+      );
+      await page
+        .getByRole("button", { name: "Load more New findings", exact: true })
+        .click();
+      await expect.poll(() => requested).toBe(true);
+      const outsideControl = page.getByRole("button", {
+        name: "Theme",
+        exact: true,
+      });
+      const resetFocus =
+        resetKind === "mobile"
+          ? page.getByRole("button", { name: /^Filters \(/u })
+          : page.getByRole("searchbox", {
+              name: "Search findings",
+              exact: true,
+            });
+      if (resetKind === "403") await outsideControl.focus();
+      deliverReset();
+      const message = page.getByText(
+        "Board data needs to be refreshed. Access or findings may have changed.",
+        { exact: true },
+      );
+      await expect(message).toBeVisible();
+      if (resetKind === "403") await expect(outsideControl).toBeFocused();
+      else await expect(resetFocus).toBeFocused();
+      await expect(
+        page.getByRole("link", { name: /^Reset finding /u }),
+      ).toHaveCount(0);
+      release();
+      await expect(
+        page.getByRole("button", {
+          name: "Load more New findings",
+          exact: true,
+        }),
+      ).toBeEnabled();
+      await expect(
+        page.getByRole("link", { name: /^Reset finding /u }),
+      ).toHaveCount(20);
+      await expect(message).not.toBeVisible();
+      if (resetKind === "403") await expect(outsideControl).toBeFocused();
+      else await expect(resetFocus).toBeFocused();
+    } finally {
+      deliverReset();
+      release();
+      await page.unrouteAll({ behavior: "wait" });
+      await cleanup(pool, fixture, [owner.id]);
+    }
+  });
+}
+
+for (const change of ["mutation", "filter"] as const) {
+  test(`board discards pagination responses delayed across a ${change}`, async ({
+    page,
+    context,
+  }) => {
+    const owner = await verifiedAccount(context);
+    const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+    const fixture = await workspaceFixture(page, pool);
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let captured = false;
+    try {
+      for (let number = 1; number <= 22; number++)
+        await finding(
+          pool,
+          fixture.primary,
+          `Delayed finding ${number}`,
+          "new",
+          number,
+        );
+      await page.setViewportSize({ width: 2560, height: 1440 });
+      await page.goto(fixture.path);
+      await page.route(
+        `**/w/${fixture.slug}/findings/more?**`,
+        async (route) => {
+          const response = await route.fetch();
+          captured = true;
+          await gate;
+          await route.fulfill({ response });
+        },
+      );
+      await page
+        .getByRole("button", { name: "Load more New findings", exact: true })
+        .click();
+      await expect.poll(() => captured).toBe(true);
+      if (change === "mutation") {
+        await changeStatus(page, "Delayed finding 22", "Triaged");
+        await expect(
+          column(page, "Triaged").getByRole("link", {
+            name: "Delayed finding 22",
+            exact: true,
+          }),
+        ).toBeVisible();
+        await expect(
+          column(page, "New").getByRole("heading", {
+            name: "New (21)",
+            exact: true,
+          }),
+        ).toBeVisible();
+      } else {
+        await page
+          .getByRole("searchbox", { name: "Search findings", exact: true })
+          .fill("No matching title");
+        await applyFilters(page);
+        await expect(
+          column(page, "New").getByRole("heading", {
+            name: "New (0)",
+            exact: true,
+          }),
+        ).toBeVisible();
+      }
+      const delivered = page.waitForResponse((response) =>
+        response.url().includes(`/w/${fixture.slug}/findings/more?`),
+      );
+      release();
+      await delivered;
+      await expect(
+        column(page, "New").getByRole("link", { name: /^Delayed finding /u }),
+      ).toHaveCount(change === "mutation" ? 20 : 0);
+      await expect(
+        page.getByRole("link", { name: "Delayed finding 1", exact: true }),
+      ).toHaveCount(0);
+    } finally {
+      release();
+      await page.unrouteAll({ behavior: "wait" });
+      await cleanup(pool, fixture, [owner.id]);
+    }
+  });
+}
