@@ -1,4 +1,5 @@
 import "server-only";
+import { reportDatabaseFailure } from "@/lib/server/diagnostics";
 import { randomUUID } from "node:crypto";
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
@@ -116,7 +117,8 @@ export async function setIntegrationEnabled(
       await invalidateMappings(tx, id);
       return { ok: true, integrationId: id };
     });
-  } catch {
+  } catch (error) {
+    reportDatabaseFailure("integration.toggle", error);
     return { error: "Unable to update this connection. Reload and try again." };
   }
 }
@@ -187,7 +189,8 @@ export async function setRepositoryEnabled(
         .returning();
       return updated ? { ok: true, mappingId: id } : changed;
     });
-  } catch {
+  } catch (error) {
+    reportDatabaseFailure("integration.repository-toggle", error);
     return { error: "Unable to update this connection. Reload and try again." };
   }
 }
@@ -294,7 +297,8 @@ export async function connectRepository(
         });
       return { ok: true, mappingId: id };
     });
-  } catch {
+  } catch (error) {
+    reportDatabaseFailure("integration.connect", error);
     return {
       error: "Unable to connect this repository. Reload and try again.",
     };

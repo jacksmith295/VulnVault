@@ -1,7 +1,7 @@
 import { authThrottlePool } from "@/lib/server/database";
 import { resetAuthRateLimits } from "../helpers/auth-rate-limits";
 import { randomUUID } from "node:crypto";
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { and, eq, inArray } from "drizzle-orm";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 
@@ -83,6 +83,9 @@ afterAll(async () => {
 });
 
 describe("workspace creation and access with real PostgreSQL and sessions", () => {
+  let diagnostics: ReturnType<typeof vi.spyOn>;
+  beforeEach(() => { diagnostics = vi.spyOn(console, "error").mockImplementation(() => {}); });
+  afterEach(() => diagnostics.mockRestore());
   it("requires a verified session at every data entry point", async () => {
     for (const person of [null, unverified]) {
       signedIn(person);
@@ -90,6 +93,7 @@ describe("workspace creation and access with real PostgreSQL and sessions", () =
       await expect(listWorkspaces()).rejects.toThrow("redirect:/login");
       await expect(requireWorkspace("private")).rejects.toThrow("redirect:/login");
     }
+    expect(diagnostics).not.toHaveBeenCalled();
   });
 
   it("creates exactly a fixed owner membership with only the public projection", async () => {
@@ -125,6 +129,7 @@ describe("workspace creation and access with real PostgreSQL and sessions", () =
     form.delete("role"); form.append("name", "Second name");
     expect(workspaceFormInput(form)).toBeNull();
     expect(await db.select().from(organization).where(eq(organization.slug, "valid"))).toHaveLength(0);
+    expect(diagnostics).not.toHaveBeenCalled();
   });
 
   it("settles duplicate and concurrent slug collisions using the unique database constraint", async () => {
@@ -137,6 +142,7 @@ describe("workspace creation and access with real PostgreSQL and sessions", () =
     const rows = await db.select().from(organization).where(eq(organization.slug, slug));
     expect(rows).toHaveLength(1);
     expect(await db.select().from(member).where(eq(member.organizationId, rows[0].id))).toHaveLength(1);
+    expect(diagnostics).not.toHaveBeenCalled();
   });
 
   it("rolls back the organization if owner membership insertion fails", async () => {
@@ -150,6 +156,7 @@ describe("workspace creation and access with real PostgreSQL and sessions", () =
       expect((await create(slug)).error).toBe("Unable to create the workspace. Please try again.");
       expect(await db.select().from(organization).where(eq(organization.slug, slug))).toHaveLength(0);
       expect((await db.select().from(rateLimit).where(eq(rateLimit.key, `workspace-create:${verified.id}`)))[0].count).toBe(1);
+      expect(diagnostics.mock.calls).toEqual([["[VulnVault] operation failed", { operation: "workspace.create", category: "unknown" }]]);
     } finally {
       await pool.query(`DROP TRIGGER ${trigger} ON member`);
       await pool.query(`DROP FUNCTION ${trigger}()`);
@@ -165,6 +172,7 @@ describe("workspace creation and access with real PostgreSQL and sessions", () =
     try {
       expect((await create(slug)).error).toBe("Unable to create the workspace. Please try again.");
       expect(await db.select().from(organization).where(eq(organization.slug, slug))).toHaveLength(0);
+      expect(diagnostics.mock.calls).toEqual([["[VulnVault] operation failed", { operation: "workspace.limiter", category: "unknown" }]]);
     } finally {
       await pool.query(`DROP TRIGGER ${trigger} ON rate_limit`);
       await pool.query(`DROP FUNCTION ${trigger}()`);
@@ -206,6 +214,7 @@ describe("workspace creation and access with real PostgreSQL and sessions", () =
     await expect(requireWorkspace(created.slug)).rejects.toThrow("not-found");
     const session = await auth.api.getSession({ headers: request.headers });
     expect(session?.user.id).toBe(outsider.id);
+    expect(diagnostics).not.toHaveBeenCalled();
   });
 
   it("ignores malformed, stale, and other-user navigation preferences", () => {

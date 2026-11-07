@@ -1,4 +1,5 @@
 import "server-only";
+import { reportDatabaseFailure } from "@/lib/server/diagnostics";
 
 import { randomUUID } from "node:crypto";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
@@ -90,7 +91,8 @@ export async function createWorkspace(
         },
       })
       .returning({ count: rateLimit.count });
-  } catch {
+  } catch (error) {
+    reportDatabaseFailure("workspace.limiter", error);
     return { error: "Unable to create the workspace. Please try again." };
   }
   if (limit.count > 5)
@@ -143,6 +145,7 @@ export async function createWorkspace(
     ) {
       return { error: "That URL slug is already in use. Choose another slug." };
     }
+    reportDatabaseFailure("workspace.create", error);
     return { error: "Unable to create the workspace. Please try again." };
   }
 }

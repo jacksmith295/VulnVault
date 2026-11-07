@@ -299,9 +299,10 @@ describe("Dependabot tenant isolation and fenced persistence", () => {
     const beforeGrant = await grant();
     const beforeMapping = await mapping();
     const identifier = `integration_failure_${randomUUID().replaceAll("-", "")}`;
+    const diagnostics = vi.spyOn(console, "error").mockImplementation(() => {});
     // Fail after the write, including at COMMIT, so the production transaction must roll back.
     await pool.query(`CREATE FUNCTION ${identifier}() RETURNS trigger LANGUAGE plpgsql AS $$
-      BEGIN RAISE EXCEPTION 'test-only private database failure'; END;
+      BEGIN RAISE EXCEPTION 'private evidence token secret-credentials https://private.example/tenant'; END;
     $$`);
     try {
       await pool.query(`CREATE ${failure === "commit" ? "CONSTRAINT " : ""}TRIGGER ${identifier}
@@ -319,9 +320,14 @@ describe("Dependabot tenant isolation and fenced persistence", () => {
       expect(result).toEqual({
         error: "Unable to update this connection. Reload and try again.",
       });
+      expect(diagnostics.mock.calls).toEqual([[
+        "[VulnVault] operation failed",
+        { operation: target === "integration" ? "integration.toggle" : "integration.repository-toggle", category: "unknown" },
+      ]]);
       expect(await grant()).toEqual(beforeGrant);
       expect(await mapping()).toEqual(beforeMapping);
     } finally {
+      diagnostics.mockRestore();
       await pool.query(
         `DROP TRIGGER IF EXISTS ${identifier} ON integration_repository`,
       );

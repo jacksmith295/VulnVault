@@ -1,4 +1,5 @@
 import "server-only";
+import { reportDatabaseFailure } from "@/lib/server/diagnostics";
 
 import { randomUUID } from "node:crypto";
 import { and, asc, eq, isNotNull, isNull, notInArray, sql } from "drizzle-orm";
@@ -125,7 +126,8 @@ export async function createService(
           );
       return { service: created };
     });
-  } catch {
+  } catch (error) {
+    reportDatabaseFailure("service.create", error);
     return { error: "Unable to create the service. Please try again." };
   }
 }
@@ -192,7 +194,8 @@ export async function editService(
           );
       return { service: updated };
     });
-  } catch {
+  } catch (error) {
+    reportDatabaseFailure("service.edit", error);
     return { error: "Unable to save the service. Please try again." };
   }
 }
@@ -239,7 +242,8 @@ export async function changeServiceArchive(
         .returning(projection);
       return updated ? { service: updated } : conflict;
     });
-  } catch {
+  } catch (error) {
+    reportDatabaseFailure("service.archive", error);
     return { error: "Unable to update the service. Please try again." };
   }
 }

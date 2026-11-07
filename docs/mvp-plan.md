@@ -18,16 +18,17 @@ The initial product is self-hosted locally: Next.js on the host for development,
 | [Workspace board](findings-board-plan.md), [interactions](board-interactions-plan.md), and [responsive UI](responsive-ui-plan.md) | Authorised filters, bounded columns with Load more, status menus and dragging, mobile status tabs, and responsive filters. [Shared UI and themes](ui-foundation-plan.md) support light/dark/system preferences. |
 | [Dependabot ingestion](dependabot-ingestion-plan.md) | Operator-bound GitHub App installations, workspace repository mappings, local polling and Sync now, recoverable sync status, deduplication, and retained provenance. Real alerts have been imported. Upstream state refreshes independently of local triage and edits. |
 | [PC-local hosting](local-hosting.md) | Optional production Docker app for trusted Wi-Fi HTTP or private Tailscale HTTPS. Existing Compose data and device identity are retained; the inbox stays local. Container GitHub sync is disabled; polling uses the host worker. |
+| [CI verification](../.github/workflows/verification.yml) | Node.js 24 checks on PRs and `main`, with disposable PostgreSQL/Mailpit and sequential lint, TypeScript, hook, application, build, and Chromium checks. |
 
 Reliability fixes from PR #16 are merged: continuous polling recovers from unexpected database failures, configured-App mappings cannot be starved by old mappings, mobile status selection and valid drafts survive refreshes, and integration toggle failures return recoverable feedback. Worker, PostgreSQL, and browser regressions cover these outcomes alongside existing permission, concurrency, and data-preservation checks.
 
 ## Next delivery slices
 
-### 1. Repeatable verification and safe diagnostics
+### 1. Safe diagnostics and dependency triage
 
-The [CI verification workflow](../.github/workflows/verification.yml) is implemented on the feature branch, awaiting merge. It runs lint, TypeScript, hook regressions, automated tests, production build, and browser checks with disposable PostgreSQL and Mailpit. Persistence and browser suites run sequentially. See the [verification setup](../README.md#verification); execution evidence belongs in the PR.
+CI verification is merged. Safe mutation-failure diagnostics and a dated [dependency triage](dependency-review.md) are implemented on the feature branch, awaiting review, verification, and merge. Diagnostic entries contain only allowlisted operations and categories; existing client feedback, permissions, transactions, and specialised auth/provider handling remain unchanged. The three dependency advisories remain open because compatible patched parent releases are unavailable; the review records exposure limits and revisit conditions, with package versions unchanged.
 
-After CI merges, agree on a bounded diagnostics change using safe operation and error categories, keeping raw sensitive errors, credentials, and vulnerability evidence out of logs and form feedback. Triage dependency advisories by affected path and practical exposure, with scoped upgrades and relevant regressions. Avoid forced authentication dependency upgrades that bypass the [hardening checks](auth-hardening.md). Separate a quick unit-test setup from database setup when that improves the development loop.
+After this slice merges, start the real-project recovery trial below. Revisit dependencies when compatible fixes or affected usage change, preserving the [authentication hardening checks](auth-hardening.md). Separate quick unit-test setup from database setup when demonstrated development needs justify it.
 
 ### 2. Real-project trial and local recovery
 

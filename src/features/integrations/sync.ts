@@ -1,4 +1,5 @@
 import "server-only";
+import { reportDatabaseFailure } from "@/lib/server/diagnostics";
 import { randomUUID } from "node:crypto";
 import { and, asc, eq, isNull, lte, or, sql } from "drizzle-orm";
 import { db } from "@/db";
@@ -353,7 +354,8 @@ export async function syncMapping(
   let claim: Claim | SyncResult;
   try {
     claim = await claimMapping(id, human);
-  } catch {
+  } catch (error) {
+    reportDatabaseFailure("integration.claim", error);
     return {
       status: "failed",
       error: "Unable to start this sync. Please try again.",
