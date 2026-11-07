@@ -17,6 +17,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/db";
 import {
   finding,
+  findingSource,
   groupMembership,
   member,
   organization,
@@ -36,6 +37,7 @@ import {
   type FindingStatus,
 } from "./board-validation";
 import { severities, statuses } from "./validation";
+import { findingFilterCondition } from "./filter-data";
 
 export type BoardFinding = {
   id: string;
@@ -151,8 +153,7 @@ async function context(
       : filters.archive === "archived"
         ? isNotNull(service.archivedAt)
         : undefined,
-    filters.severity ? eq(finding.severity, filters.severity) : undefined,
-    filters.status ? eq(finding.status, filters.status) : undefined,
+    findingFilterCondition(filters),
     group
       ? group.isDefault
         ? sql`not exists (select 1 from ${serviceAccessGroup} a where a.service_id = ${service.id})`
@@ -182,6 +183,7 @@ async function totals(tx: Transaction, condition: ReturnType<typeof and>) {
     })
     .from(finding)
     .innerJoin(service, eq(service.id, finding.serviceId))
+    .leftJoin(findingSource, eq(findingSource.findingId, finding.id))
     .where(condition)
     .groupBy(finding.status);
 }
@@ -200,6 +202,7 @@ async function page(
     .select(projection)
     .from(finding)
     .innerJoin(service, eq(service.id, finding.serviceId))
+    .leftJoin(findingSource, eq(findingSource.findingId, finding.id))
     .where(and(condition, eq(finding.status, status), after))
     .orderBy(desc(finding.createdAt), desc(finding.id))
     .limit(pageSize + 1);

@@ -24,19 +24,21 @@ Reliability fixes from PR #16 are merged: continuous polling recovers from unexp
 
 Safe mutation-failure diagnostics and the dated [dependency triage](dependency-review.md) are merged in PR #20. Diagnostics use allowlisted operations/categories and preserve existing client feedback, permissions, transactions, and specialised auth/provider handling. Three advisories remain open because compatible fixes are unavailable; the review records exposure limits and revisit conditions, with package versions unchanged.
 
+The [local recovery runbook](local-recovery.md) and synthetic browser rehearsals are merged in PR #21. They verify isolated restore, real existing-data migrations, session/token revocation, integration containment and recovered login. Recovery of an actual private archive and live cutover remain separate follow-ups.
+
 ## Implemented, awaiting merge
 
-The [local recovery runbook](local-recovery.md) and synthetic browser rehearsals are implemented, independently reviewed, and locally verified on the recovery branch, awaiting CI and merge. They cover private backups, isolated restore, actual existing-data migrations, session/token revocation, disabled integrations and cleared leases, and recovered application login. A pre-integration migration baseline and current snapshot exercise both upgrade and recovery. No app/schema/dependency changes or live cutover are included.
+The [triage discovery slice](triage-discovery-plan.md) is implemented, independently reviewed and locally verified, awaiting merge. It adds shared board/service search across title, package, GHSA and CVE, source and upstream-state filters, and compact service lists with 20-row pages. Local triage decisions remain independent of upstream facts; reconciliation actions require a separate agreement.
 
 ## Next delivery slices
 
-### 1. Triage usability design
+### 1. Service integration workflow design (proposed)
 
-Design imported-finding search across title, package, GHSA, and CVE, plus source and upstream-state filters. Make service finding lists compact and bounded; they currently load all rows. Agree on explicit reconciliation behaviour before adding actions that apply upstream changes locally. Preserve the separation between upstream facts and local decisions.
+Agree the service-level setup and recommendation workflow described below, including the shared workspace installation boundary. This follows finding discovery without expanding providers or changing ingestion policy. The PC startup command remains planned separately.
 
 ### 2. Separate real-project follow-up
 
-The owner selected recovery only for this slice. The real-project import, triage, upstream remediation, refreshed upstream state, and explicit local resolve/reopen trial remains pending. VulnVault's three advisories currently lack compatible fixes; the synthetic rehearsal does not establish real-project remediation or live polling recovery. Revisit dependencies when compatible fixes or affected usage change, preserving the [authentication hardening checks](auth-hardening.md).
+The recovery slice deferred the real-project import, triage, upstream remediation, refreshed upstream state, and explicit local resolve/reopen trial. VulnVault's three advisories lacked compatible fixes at the [last dependency review](dependency-review.md); the synthetic rehearsal does not establish real-project remediation or live polling recovery. Revisit dependencies when compatible fixes or affected usage change, preserving the [authentication hardening checks](auth-hardening.md).
 
 Use the runbook with an actual private archive and agree any live upgrade/cutover separately, including application/worker restart and polling recovery. Manual findings, permissions, provenance, local decisions, and deduplication must survive. Use the trial to agree solo MVP completion and identify remaining usability needs.
 

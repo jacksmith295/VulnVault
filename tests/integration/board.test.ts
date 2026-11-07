@@ -28,6 +28,7 @@ import { auth } from "@/lib/auth";
 import { db, pool } from "@/db";
 import {
   finding,
+  findingSource,
   member,
   organization,
   service,
@@ -40,6 +41,8 @@ import {
   changeFindingStatus,
   createFinding,
   requireFinding,
+  listFindings,
+  getMoreServiceFindings,
 } from "@/features/findings/data";
 
 import {
@@ -193,6 +196,295 @@ const total = (board: Awaited<ReturnType<typeof getFindingBoard>>) =>
   board.columns.reduce((sum, column) => sum + column.total, 0);
 
 describe("workspace findings board with PostgreSQL and real sessions", () => {
+  it("matches literal search across title and source fields, with null CVEs and AND filters", async () => {
+    const manual = await create();
+    await db
+      .update(finding)
+      .set({ title: "Literal 50%_\\ token" })
+      .where(eq(finding.id, manual.id));
+    const imported = [];
+    for (const [index, state] of [
+      "open",
+      "fixed",
+      "dismissed",
+      "auto_dismissed",
+    ].entries()) {
+      const row = await create();
+      imported.push(row.id);
+      await db
+        .update(finding)
+        .set({
+          title: `Imported Title ${index}`,
+          severity: index ? "low" : "high",
+        })
+        .where(eq(finding.id, row.id));
+      await db.insert(findingSource).values({
+        findingId: row.id,
+        workspaceId,
+        serviceId,
+        kind: "github_dependabot",
+        repositoryId: "test-repository",
+        alertNumber: index + 1,
+        state,
+        upstreamCreatedAt: new Date(),
+        upstreamUpdatedAt: new Date(),
+        packageName: `Package-${index}`,
+        ecosystem: "npm",
+        manifestPath: "package.json",
+        ghsaId: `GHSA-test-${index}`,
+        cveId: index ? `CVE-2026-${index}` : null,
+        vulnerableRange: "<1",
+        summary: "Source summary",
+        severity: "high",
+        url: "https://example.com/alert",
+      });
+    }
+    const checks = [
+      [{ q: "50%_\\" }, [manual.id]],
+      [{ q: "IMPORTED TITLE 0" }, [imported[0]]],
+      [{ q: "package-1" }, [imported[1]]],
+      [{ q: "ghsa-TEST-2" }, [imported[2]]],
+      [{ q: "cve-2026-3" }, [imported[3]]],
+      [{ source: "manual" }, [manual.id]],
+      [
+        {
+          source: "github_dependabot",
+          severity: "high",
+          status: "new",
+          q: "package",
+          upstream: "open",
+        },
+        [imported[0]],
+      ],
+      [{ source: "manual", upstream: "open" }, []],
+      [
+        { source: "github_dependabot", upstream: "fixed", severity: "high" },
+        [],
+      ],
+    ] as const;
+    for (const [filters, expected] of checks) {
+      const list = await listFindings(slug, serviceId, filters);
+      expect(list.filterError).toBeUndefined();
+      expect(list.findings.map((row) => row.id).sort()).toEqual(
+        [...expected].sort(),
+      );
+      expect(list.total).toBe(expected.length);
+      const board = await getFindingBoard(slug, filters);
+      expect(total(board)).toBe(expected.length);
+      expect(
+        board.columns
+          .flatMap((column) => column.findings.map((row) => row.id))
+          .sort(),
+      ).toEqual([...expected].sort());
+    }
+    for (const [index, upstream] of [
+      "open",
+      "fixed",
+      "dismissed",
+      "auto_dismissed",
+    ].entries()) {
+      expect(
+        (await listFindings(slug, serviceId, { upstream })).findings.map(
+          (row) => row.id,
+        ),
+      ).toEqual([imported[index]]);
+      expect(total(await getFindingBoard(slug, { upstream }))).toBe(1);
+    }
+    expect((await listFindings(slug, serviceId, { q: ["", ""] })).total).toBe(
+      0,
+    );
+    expect(
+      (await listFindings(slug, serviceId, { bad: "" })).filterError,
+    ).toBeTruthy();
+    const beforeSync = await listFindings(slug, serviceId, {
+      upstream: "open",
+    });
+    await db
+      .update(findingSource)
+      .set({ state: "fixed", upstreamUpdatedAt: new Date() })
+      .where(eq(findingSource.findingId, imported[0]));
+    const afterSync = await getMoreServiceFindings(
+      slug,
+      serviceId,
+      { upstream: "open" },
+      imported[0],
+      beforeSync.scopeKey,
+    );
+    expect(afterSync.reset).toBe(false);
+    if (!afterSync.reset) expect(afterSync.total).toBe(0);
+    expect((await getFindingBoard(slug, { q: "package" })).scopeKey).not.toBe(
+      (await getFindingBoard(slug, { q: "title" })).scopeKey,
+    );
+  });
+
+  it("paginates the fixed service newest first with precise ties, mutable anchors and stable source scope", async () => {
+    const ids = Array.from({ length: 43 }, () => randomUUID());
+    await db.insert(finding).values(
+      ids.map((id) => ({
+        id,
+        serviceId,
+        title: "Match",
+        description: "Evidence",
+        severity: "high",
+        status: "new",
+      })),
+    );
+    for (let index = 0; index < ids.length; index++)
+      await pool.query(
+        "UPDATE finding SET created_at = '2026-01-01 00:00:00'::timestamp + ($1::integer * interval '1 microsecond') WHERE id = $2",
+        [Math.min(index, 41), ids[index]],
+      );
+    const ordered = [
+      ...ids.slice(41).sort().reverse(),
+      ...ids.slice(0, 41).reverse(),
+    ];
+    const filters = { q: " match ", severity: "high", status: "new" };
+    const first = await listFindings(slug, serviceId, filters);
+    expect(first.total).toBe(43);
+    expect(first.findings.map((row) => row.id)).toEqual(ordered.slice(0, 20));
+    expect(Object.keys(first.findings[0]).sort()).toEqual(
+      [
+        "id",
+        "title",
+        "severity",
+        "status",
+        "createdAt",
+        "sourceKind",
+        "upstreamState",
+      ].sort(),
+    );
+    await db
+      .update(finding)
+      .set({ title: "Changed", severity: "low", status: "resolved" })
+      .where(eq(finding.id, first.nextCursor!));
+    const refreshed = await listFindings(slug, serviceId, {
+      ...filters,
+      q: "match",
+    });
+    expect(refreshed.scopeKey).toBe(first.scopeKey);
+    expect(refreshed.revisionKey).not.toBe(first.revisionKey);
+    const second = await getMoreServiceFindings(
+      slug,
+      serviceId,
+      filters,
+      first.nextCursor,
+      first.scopeKey,
+    );
+    expect(second.reset).toBe(false);
+    if (second.reset) throw new Error("Unexpected reset");
+    expect(second.total).toBe(42);
+    expect(second.findings.map((row) => row.id)).toEqual(ordered.slice(20, 40));
+    const third = await getMoreServiceFindings(
+      slug,
+      serviceId,
+      filters,
+      second.nextCursor,
+      first.scopeKey,
+    );
+    if (third.reset) throw new Error("Unexpected reset");
+    expect(third.findings.map((row) => row.id)).toEqual(ordered.slice(40));
+    expect(third.nextCursor).toBeNull();
+    const [foreign] = await db
+      .insert(finding)
+      .values({
+        id: randomUUID(),
+        serviceId: foreignService,
+        title: "Foreign",
+        description: "Evidence",
+        severity: "high",
+        status: "new",
+      })
+      .returning();
+    const sibling = await create(secondService);
+    for (const cursor of [
+      foreign.id,
+      sibling.id,
+      "forged",
+      "",
+      [first.nextCursor],
+    ])
+      expect(
+        await getMoreServiceFindings(
+          slug,
+          serviceId,
+          filters,
+          cursor,
+          first.scopeKey,
+        ),
+      ).toEqual({ reset: true });
+    expect(
+      await getMoreServiceFindings(
+        slug,
+        serviceId,
+        { q: "changed" },
+        first.nextCursor,
+        first.scopeKey,
+      ),
+    ).toEqual({ reset: true });
+    expect(
+      await getMoreServiceFindings(
+        slug,
+        serviceId,
+        { q: ["", ""] },
+        first.nextCursor,
+        first.scopeKey,
+      ),
+    ).toEqual({ reset: true });
+    await db
+      .update(service)
+      .set({ archivedAt: new Date() })
+      .where(eq(service.id, serviceId));
+    const archived = await listFindings(slug, serviceId);
+    expect(archived.total).toBe(43);
+    expect(
+      await getMoreServiceFindings(
+        slug,
+        serviceId,
+        filters,
+        first.nextCursor,
+        first.scopeKey,
+      ),
+    ).toEqual({ reset: true });
+  });
+
+  it("denies service list reads and resets pagination after permission removal", async () => {
+    const row = await create();
+    const scope = await listFindings(slug, serviceId);
+    await role("member");
+    expect(
+      await getMoreServiceFindings(slug, serviceId, {}, row.id, scope.scopeKey),
+    ).toEqual({ reset: true });
+    const memberScope = await listFindings(slug, serviceId);
+    await db
+      .insert(serviceAccessGroup)
+      .values({ workspaceId, serviceId, groupId: hiddenGroup });
+    expect(
+      await getMoreServiceFindings(
+        slug,
+        serviceId,
+        {},
+        row.id,
+        memberScope.scopeKey,
+      ),
+    ).toEqual({ reset: true });
+    await expect(listFindings(slug, serviceId)).rejects.toThrow("not-found");
+    await expect(listFindings(otherSlug, serviceId)).rejects.toThrow(
+      "not-found",
+    );
+    await role("unknown");
+    await expect(listFindings(slug, serviceId)).rejects.toThrow("not-found");
+    expect(
+      await getMoreServiceFindings(slug, serviceId, {}, row.id, scope.scopeKey),
+    ).toEqual({ reset: true });
+    request.headers = new Headers();
+    await expect(listFindings(slug, serviceId)).rejects.toThrow(
+      "redirect:/login",
+    );
+    await expect(
+      getMoreServiceFindings(slug, serviceId, {}, row.id, scope.scopeKey),
+    ).rejects.toThrow("redirect:/login");
+  });
+
   it("rejects invalid, duplicate, forged and unavailable filters without widening results", async () => {
     await create();
     for (const filters of [
@@ -270,6 +562,12 @@ describe("workspace findings board with PostgreSQL and real sessions", () => {
           .set({ emailVerified: false })
           .where(eq(user.id, userId));
       try {
+        await expect(listFindings(slug, serviceId)).rejects.toThrow(
+          "redirect:/login",
+        );
+        await expect(
+          getMoreServiceFindings(slug, serviceId, {}, "x", "x"),
+        ).rejects.toThrow("redirect:/login");
         await expect(getFindingBoardFilterOptions(slug, {})).rejects.toThrow(
           "redirect:/login",
         );

@@ -30,22 +30,12 @@ const conflict = {
   conflict: true,
 } as const;
 
-export async function listFindings(slug: string, serviceId: string) {
-  const scope = await requireService(slug, serviceId);
-  const { user } = await requireSession();
-  const findings = await db
-    .select({ finding })
-    .from(finding)
-    .innerJoin(service, eq(service.id, finding.serviceId))
-    .where(
-      and(
-        eq(finding.serviceId, scope.service.id),
-        serviceAccessCondition(user.id),
-      ),
-    )
-    .orderBy(asc(finding.createdAt), asc(finding.id));
-  return { ...scope, findings: findings.map((row) => row.finding) };
-}
+export {
+  listFindings,
+  getMoreServiceFindings,
+  type FindingListItem,
+  type MoreServiceFindings,
+} from "./service-list-data";
 export async function requireFinding(
   slug: string,
   serviceId: string,
