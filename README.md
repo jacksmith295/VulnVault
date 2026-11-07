@@ -67,6 +67,12 @@ Set `TEST_DATABASE_URL` as shown in `.env.example`. Tests use the isolated datab
 
 The test database uses temporary container storage; its contents are disposable. Browser tests use unique email addresses and do not clear the development inbox. Browser artifacts are ignored by Git and may contain sensitive test data; do not publish them indiscriminately.
 
+### Continuous integration
+
+The [Verification workflow](.github/workflows/verification.yml) runs on pull requests to `main`, pushes to `main`, and manual dispatch. Its Node.js 24 job uses disposable PostgreSQL and Mailpit services and test-only configuration, without repository secrets or a local environment file. It runs lint, TypeScript, hook tests, unit/integration tests, a production build, and Chromium tests in sequence.
+
+Inspect results and ordinary test logs in GitHub Actions. Browser traces and screenshots are not uploaded automatically because they can contain test credentials and finding data. The workflow does not deploy or access the local PC. Making the `Verification` check a merge requirement is a separate repository setting; this change does not configure branch protection.
+
 ## Database changes
 
 The Drizzle schema and generated SQL migrations are versioned together. Better Auth owns the authentication and workspace-membership schema conventions. After an agreed schema change:

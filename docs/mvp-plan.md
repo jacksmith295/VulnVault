@@ -25,9 +25,9 @@ Reliability fixes from PR #16 are merged: continuous polling recovers from unexp
 
 ### 1. Repeatable verification and safe diagnostics
 
-Add minimal CI for lint, TypeScript, hook regressions, automated tests, production build, and browser checks. Use isolated PostgreSQL and Mailpit; run persistence and browser suites sequentially. Follow the [verification setup](../README.md#verification).
+The [CI verification workflow](../.github/workflows/verification.yml) is implemented on the feature branch, awaiting merge. It runs lint, TypeScript, hook regressions, automated tests, production build, and browser checks with disposable PostgreSQL and Mailpit. Persistence and browser suites run sequentially. See the [verification setup](../README.md#verification); execution evidence belongs in the PR.
 
-Improve diagnostics with safe operation and error categories, keeping raw sensitive errors, credentials, and vulnerability evidence out of logs and form feedback. Triage dependency advisories by affected path and practical exposure, with scoped upgrades and relevant regressions. Avoid forced authentication dependency upgrades that bypass the [hardening checks](auth-hardening.md). Separate a quick unit-test setup from database setup when that improves the development loop.
+After CI merges, agree on a bounded diagnostics change using safe operation and error categories, keeping raw sensitive errors, credentials, and vulnerability evidence out of logs and form feedback. Triage dependency advisories by affected path and practical exposure, with scoped upgrades and relevant regressions. Avoid forced authentication dependency upgrades that bypass the [hardening checks](auth-hardening.md). Separate a quick unit-test setup from database setup when that improves the development loop.
 
 ### 2. Real-project trial and local recovery
 
