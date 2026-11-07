@@ -11,6 +11,7 @@ async function main() {
   const { values } = parseArgs({
     options: {
       once: { type: "boolean", default: false },
+      check: { type: "boolean", default: false },
       workspace: { type: "string" },
     },
     strict: true,
@@ -19,6 +20,11 @@ async function main() {
   const { readGithubConfig } =
     await import("../src/features/integrations/config");
   if (!readGithubConfig()) throw new Error("not_configured");
+  if (values.check) {
+    const { pool } = await import("../src/lib/server/database");
+    await pool.query("SELECT 1");
+    return;
+  }
   const { runNextSync } = await import("../src/features/integrations/sync");
   const { runIntegrationWorker } =
     await import("../src/features/integrations/worker");

@@ -26,15 +26,17 @@ Safe mutation-failure diagnostics and the dated [dependency triage](dependency-r
 
 The [local recovery runbook](local-recovery.md) and synthetic browser rehearsals are merged in PR #21. They verify isolated restore, real existing-data migrations, session/token revocation, integration containment and recovered login. Recovery of an actual private archive and live cutover remain separate follow-ups.
 
+The [triage discovery slice](triage-discovery-plan.md) is merged in PR #22: shared board/service search across title, package, GHSA and CVE, source and upstream-state filters, and compact service lists with 20-row pages. Local triage decisions remain independent of upstream facts; reconciliation actions require a separate agreement.
+
 ## Implemented, awaiting merge
 
-The [triage discovery slice](triage-discovery-plan.md) is implemented, independently reviewed and locally verified, awaiting merge. It adds shared board/service search across title, package, GHSA and CVE, source and upstream-state filters, and compact service lists with 20-row pages. Local triage decisions remain independent of upstream facts; reconciliation actions require a separate agreement.
+The owner prioritised [one-command PC startup](local-startup.md), now implemented, independently reviewed and locally verified on the feature branch, awaiting merge: reuse the existing Docker/Tailscale installation and image, offer explicit rebuilding, and supervise the configured host worker. Sudo is permitted only to start a stopped standard local Docker daemon. No migrations, data resets or Tailscale enrolment are included.
 
 ## Next delivery slices
 
 ### 1. Service integration workflow design (proposed)
 
-Agree the service-level setup and recommendation workflow described below, including the shared workspace installation boundary. This follows finding discovery without expanding providers or changing ingestion policy. The PC startup command remains planned separately.
+Agree the service-level setup and recommendation workflow described below, including the shared workspace installation boundary. This follows PC startup without expanding providers or changing ingestion policy.
 
 ### 2. Separate real-project follow-up
 
@@ -47,7 +49,6 @@ Separate quick unit-test setup from database setup when demonstrated development
 ## Planned improvements
 
 - **Service-level integrations and recommendations:** Move repository integration setup, sync controls, and status into each service. Prioritise compatible integrations from its linked repository URLs: for example, a linked VulnVault GitHub repository should put GitHub integration at the top. Recommendations must distinguish compatibility from actual configuration/access. Retain shared workspace installation authorisation where needed and existing permissions; agree those boundaries before implementation.
-- **One-command PC startup:** Add a documented command or script to run after boot that brings up Docker, PostgreSQL, Mailpit, the app, Tailscale when selected, and the configured integration worker. Reuse the existing Compose project, volumes, and device identity; avoid duplicate processes, wait for health, and report the phone URL or actionable setup errors. Agree privilege and rebuild handling; do not silently migrate data or re-enrol Tailscale.
 
 ## Later decisions
 

@@ -73,6 +73,8 @@ jobs:
         run: npm run typecheck
       - name: Test Git hooks
         run: npm run test:hooks
+      - name: Test local startup
+        run: npm run test:startup
       - name: Run unit and integration tests
         run: npm test
       - name: Build production application
