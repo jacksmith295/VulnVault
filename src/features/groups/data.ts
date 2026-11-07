@@ -1,4 +1,5 @@
 import "server-only";
+import { reportDatabaseFailure } from "@/lib/server/diagnostics";
 import { randomUUID } from "node:crypto";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { notFound } from "next/navigation";
@@ -112,7 +113,8 @@ export async function createGroup(
         .returning();
       return { group };
     });
-  } catch {
+  } catch (error) {
+    reportDatabaseFailure("group.create", error);
     return {
       error: "Unable to create the group. Use a unique name and try again.",
     };
@@ -186,7 +188,8 @@ export async function editGroup(
           );
       return { group };
     });
-  } catch {
+  } catch (error) {
+    reportDatabaseFailure("group.edit", error);
     return {
       error: "Unable to save the group. Use a unique name and try again.",
     };
@@ -290,7 +293,8 @@ export async function changeServiceAccess(
         .returning();
       return { service: updated };
     });
-  } catch {
+  } catch (error) {
+    reportDatabaseFailure("service.access", error);
     return { error: "Unable to change service access. Please try again." };
   }
 }

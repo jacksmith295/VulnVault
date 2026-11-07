@@ -1,4 +1,5 @@
 import "server-only";
+import { reportDatabaseFailure } from "@/lib/server/diagnostics";
 import { randomUUID } from "node:crypto";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
@@ -124,7 +125,8 @@ export async function provisionGithubIntegration(
       }
       return { ok: true, integrationId, mappedRepositories };
     });
-  } catch {
+  } catch (error) {
+    reportDatabaseFailure("integration.bind", error);
     return {
       error:
         "Unable to bind this installation. Check installation ownership and repository identity.",

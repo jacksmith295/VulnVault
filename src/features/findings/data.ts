@@ -1,4 +1,5 @@
 import "server-only";
+import { reportDatabaseFailure } from "@/lib/server/diagnostics";
 
 import { randomUUID } from "node:crypto";
 import { and, asc, eq, notInArray, sql } from "drizzle-orm";
@@ -169,7 +170,8 @@ export async function createFinding(
       await saveReferences(tx, created.id, referenceUrls);
       return { finding: created };
     });
-  } catch {
+  } catch (error) {
+    reportDatabaseFailure("finding.create", error);
     return { error: "Unable to create the finding. Please try again." };
   }
 }
@@ -213,7 +215,8 @@ export async function editFinding(
       await saveReferences(tx, id, referenceUrls);
       return { finding: updated };
     });
-  } catch {
+  } catch (error) {
+    reportDatabaseFailure("finding.edit", error);
     return { error: "Unable to save the finding. Please try again." };
   }
 }
@@ -263,7 +266,8 @@ export async function changeFindingStatus(
         .returning();
       return updated ? { finding: updated } : conflict;
     });
-  } catch {
+  } catch (error) {
+    reportDatabaseFailure("finding.status", error);
     return { error: "Unable to save the finding status. Please try again." };
   }
 }

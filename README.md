@@ -73,6 +73,12 @@ The [Verification workflow](.github/workflows/verification.yml) runs on pull req
 
 Inspect results and ordinary test logs in GitHub Actions. Browser traces and screenshots are not uploaded automatically because they can contain test credentials and finding data. The workflow does not deploy or access the local PC. Making the `Verification` check a merge requirement is a separate repository setting; this change does not configure branch protection.
 
+## Server diagnostics and dependency review
+
+Covered server mutation catches emit a fixed operation name and failure category through the [server diagnostics helper](src/lib/server/diagnostics.ts). These entries exclude raw exceptions, SQL, constraint names, credentials, identifiers, URLs, and finding content. Unknown failures stay categorised as unknown; diagnostic failures cannot replace the existing form response. Expected validation, permission denials, version conflicts, and duplicate workspace slugs retain their existing handling without extra failure entries.
+
+Provider, worker, authentication, and framework logs retain their existing handling. This helper covers the instrumented mutation catches, including integration claim failures, rather than every server error. See the dated [dependency review](docs/dependency-review.md) for unresolved advisories, observed dependency paths, and the conditions for revisiting them. Dependency versions remain unchanged in this slice.
+
 ## Database changes
 
 The Drizzle schema and generated SQL migrations are versioned together. Better Auth owns the authentication and workspace-membership schema conventions. After an agreed schema change:
