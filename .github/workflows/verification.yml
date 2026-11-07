@@ -1,0 +1,83 @@
+name: Verification
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verification:
+    name: Verification
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres-test:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: vulnvault_test
+          POSTGRES_PASSWORD: vulnvault_test_only
+          POSTGRES_DB: vulnvault_test
+        ports:
+          - 55433:5432
+        options: >-
+          --health-cmd "pg_isready -U vulnvault_test -d vulnvault_test"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+      mailpit:
+        image: axllent/mailpit:v1.27.4
+        ports:
+          - 1025:1025
+          - 8025:8025
+        options: >-
+          --health-cmd "/mailpit readyz"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+          --health-start-period 5s
+    env:
+      TEST_DATABASE_URL: postgresql://vulnvault_test:vulnvault_test_only@127.0.0.1:55433/vulnvault_test
+      DATABASE_URL: postgresql://unused:unused@127.0.0.1:1/unused
+      BETTER_AUTH_SECRET: ci-test-only-secret-never-use-for-real-accounts-0123456789
+      BETTER_AUTH_URL: http://127.0.0.1:3100
+      SMTP_HOST: 127.0.0.1
+      SMTP_PORT: "1025"
+      SMTP_FROM: VulnVault tests <tests@vulnvault.local>
+      GITHUB_APP_ID: ""
+      GITHUB_APP_PRIVATE_KEY_FILE: ""
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: "24"
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Check TypeScript
+        run: npm run typecheck
+      - name: Test Git hooks
+        run: npm run test:hooks
+      - name: Run unit and integration tests
+        run: npm test
+      - name: Build production application
+        run: npm run build
+      - name: Install Chromium and system dependencies
+        run: npx playwright install --with-deps chromium
+      - name: Run browser tests
+        run: npm run test:e2e
