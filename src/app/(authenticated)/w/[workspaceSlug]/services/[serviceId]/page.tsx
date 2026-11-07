@@ -35,6 +35,15 @@ export default async function ServicePage({
     <Page width="readable">
       <PageHeader
         title={service.name}
+        actions={
+          manage ? (
+            <TextLink
+              href={`/w/${workspace.slug}/services/${service.id}/integrations`}
+            >
+              Integrations
+            </TextLink>
+          ) : undefined
+        }
         back={
           <TextLink
             href={`/w/${workspace.slug}/services${archived ? "?status=archived" : ""}`}

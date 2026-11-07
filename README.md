@@ -115,7 +115,7 @@ npm run github:connect -- --workspace <workspace-slug> --repository <owner/repos
 
 The command authenticates as the App, validates installation/repository access, and connects matching existing service repository URLs only in that workspace. Review the reported mapping count before importing. An installation cannot silently move to another workspace. Reconnecting the same account preserves the connection identity and existing findings.
 
-Owners/admins can open **Integrations** from workspace home to connect other existing repository links, disable a connection or repository, and use **Sync now**. Sync now runs immediately without a worker, but cannot bypass an active sync or retry delay. Other workspace roles cannot administer integrations. Imported finding provenance follows the existing service/group permissions.
+Owners/admins open **Integrations** from a service to connect its existing GitHub repository links, manage mappings, view sync status and use **Sync now**. Compatible linked GitHub URLs produce a recommendation, which does not verify App access or alert permissions. **Connections** on workspace home manages shared installation setup and global enable/disable. See the [service integration workflow](docs/service-integrations-plan.md) for these boundaries. Sync now runs immediately without a worker, but cannot bypass an active sync or retry delay. Other workspace roles cannot administer integrations. Imported finding provenance follows the existing service/group permissions.
 
 For scheduled local polling, run this alongside Next.js:
 

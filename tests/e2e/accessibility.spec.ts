@@ -242,6 +242,7 @@ for (const theme of ["Light", "Dark"] as const) {
         `${path}/groups`,
         `${path}/groups/${groupId}`,
         `${path}/integrations`,
+        `${servicePath}/integrations`,
         `${path}/services/missing`,
       ]) {
         await page.goto(route);

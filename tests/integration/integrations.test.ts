@@ -54,6 +54,7 @@ import {
 import {
   connectRepository,
   getIntegrationPageData,
+  getServiceIntegrationPageData,
   setIntegrationEnabled,
   setRepositoryEnabled,
   syncRepositoryNow,
@@ -70,6 +71,8 @@ const run = randomUUID();
 const workspaceId = randomUUID(),
   otherWorkspace = randomUUID(),
   serviceId = randomUUID(),
+  siblingService = randomUUID(),
+  siblingLink = randomUUID(),
   foreignService = randomUUID(),
   linkId = randomUUID(),
   foreignLink = randomUUID(),
@@ -143,7 +146,7 @@ async function blockedSync() {
     await release.promise;
     return [alert()];
   });
-  const pending = syncRepositoryNow(slug, mappingId);
+  const pending = syncRepositoryNow(slug, serviceId, mappingId);
   await entered.promise;
   return { pending, release };
 }
@@ -222,10 +225,12 @@ beforeAll(async () => {
   ]);
   await db.insert(service).values([
     { id: serviceId, workspaceId, name: "API" },
+    { id: siblingService, workspaceId, name: "Sibling API" },
     { id: foreignService, workspaceId: otherWorkspace, name: "Other" },
   ]);
   await db.insert(serviceRepository).values([
     { id: linkId, serviceId, url: repository.url },
+    { id: siblingLink, serviceId: siblingService, url: "https://github.com/example/sibling" },
     { id: foreignLink, serviceId: foreignService, url: repository.url },
   ]);
 });
@@ -265,7 +270,7 @@ afterAll(async () => {
     );
   await db
     .delete(finding)
-    .where(inArray(finding.serviceId, [serviceId, foreignService]));
+    .where(inArray(finding.serviceId, [serviceId, siblingService, foreignService]));
   await db
     .delete(workspaceIntegration)
     .where(
@@ -273,7 +278,7 @@ afterAll(async () => {
     );
   await db
     .delete(service)
-    .where(inArray(service.id, [serviceId, foreignService]));
+    .where(inArray(service.id, [serviceId, siblingService, foreignService]));
   await db
     .delete(organization)
     .where(inArray(organization.id, [workspaceId, otherWorkspace]));
@@ -315,7 +320,7 @@ describe("Dependabot tenant isolation and fenced persistence", () => {
               slug, integrationId, beforeGrant.version, false,
             )
           : await setRepositoryEnabled(
-              slug, mappingId, beforeMapping.version, false,
+              slug, serviceId, mappingId, beforeMapping.version, false,
             );
       expect(result).toEqual({
         error: "Unable to update this connection. Reload and try again.",
@@ -396,10 +401,11 @@ describe("Dependabot tenant isolation and fenced persistence", () => {
   it("requires verified sessions and owner/admin role for every browser management operation", async () => {
     const operations = () => [
       () => getIntegrationPageData(slug),
-      () => connectRepository(slug, integrationId, linkId),
+      () => getServiceIntegrationPageData(slug, serviceId),
+      () => connectRepository(slug, serviceId, integrationId, linkId),
       () => setIntegrationEnabled(slug, integrationId, 1, false),
-      () => setRepositoryEnabled(slug, mappingId, 1, false),
-      () => syncRepositoryNow(slug, mappingId),
+      () => setRepositoryEnabled(slug, serviceId, mappingId, 1, false),
+      () => syncRepositoryNow(slug, serviceId, mappingId),
     ];
     for (const verified of [true, false]) {
       request.headers = verified ? new Headers() : new Headers({ cookie });
@@ -422,10 +428,13 @@ describe("Dependabot tenant isolation and fenced persistence", () => {
     for (const role of ["member", "unknown"]) {
       await db.update(member).set({ role }).where(eq(member.id, membershipId));
       await expect(getIntegrationPageData(slug)).rejects.toThrow("not-found");
+      await expect(getServiceIntegrationPageData(slug, serviceId)).rejects.toThrow("not-found");
+      await expect(connectRepository(slug, serviceId, integrationId, linkId)).rejects.toThrow("not-found");
+      expect(await setRepositoryEnabled(slug, serviceId, mappingId, 1, false)).toHaveProperty("error");
       expect(
         await setIntegrationEnabled(slug, integrationId, 1, false),
       ).toHaveProperty("error");
-      expect((await syncRepositoryNow(slug, mappingId)).status).toBe(
+      expect((await syncRepositoryNow(slug, serviceId, mappingId)).status).toBe(
         "unavailable",
       );
     }
@@ -452,7 +461,7 @@ describe("Dependabot tenant isolation and fenced persistence", () => {
     ).toMatchObject({ ok: true, integrationId });
     expect((await grant()).version).toBe(first.version + 1);
     expect(
-      await connectRepository(otherSlug, integrationId, foreignLink),
+      await connectRepository(otherSlug, foreignService, integrationId, foreignLink),
     ).toHaveProperty("error");
     await expect(
       db
@@ -467,11 +476,91 @@ describe("Dependabot tenant isolation and fenced persistence", () => {
           fullName: repository.fullName,
         }),
     ).rejects.toThrow();
-    const page = await getIntegrationPageData(slug);
+    const page = await getServiceIntegrationPageData(slug, serviceId);
     expect(page.integrations[0].repositories[0]).not.toHaveProperty(
       "leaseToken",
     );
     expect(page.repositories.map((row) => row.id)).toEqual([linkId]);
+  });
+  it.each(["owner", "admin"])("allows %s service management and preserves archived toggle behaviour", async (role) => {
+    await db.update(member).set({ role }).where(eq(member.id, membershipId));
+    const extraLink = randomUUID();
+    await db.insert(serviceRepository).values({ id: extraLink, serviceId, url: `${repository.url}.git` });
+    expect(await connectRepository(slug, serviceId, integrationId, extraLink)).toHaveProperty("ok", true);
+    expect((await syncRepositoryNow(slug, serviceId, mappingId)).status).toBe("success");
+    await db.update(service).set({ archivedAt: new Date() }).where(eq(service.id, serviceId));
+    expect(await setRepositoryEnabled(slug, serviceId, mappingId, 1, false)).toHaveProperty("ok", true);
+    upstream.getRepository.mockClear();
+    expect(await connectRepository(slug, serviceId, integrationId, extraLink)).toHaveProperty("error");
+    expect((await syncRepositoryNow(slug, serviceId, mappingId)).status).toBe("unavailable");
+    expect(upstream.getRepository).not.toHaveBeenCalled();
+  });
+  it("rejects forged service identifiers before provider access and keeps sibling mappings out of the read model", async () => {
+    const result = await connectRepository(slug, siblingService, integrationId, siblingLink);
+    if (!("ok" in result)) throw new Error("sibling connection failed");
+    upstream.getRepository.mockClear();
+    for (const target of [siblingService, foreignService, "missing-service"]) {
+      expect(await connectRepository(slug, target, integrationId, linkId)).toHaveProperty("error");
+      expect(await setRepositoryEnabled(slug, target, mappingId, 1, false)).toHaveProperty("error");
+      expect((await syncRepositoryNow(slug, target, mappingId)).status).toBe("unavailable");
+    }
+    expect(await connectRepository(slug, serviceId, integrationId, siblingLink)).toHaveProperty("error");
+    expect(await setRepositoryEnabled(slug, serviceId, result.mappingId!, 1, false)).toHaveProperty("error");
+    expect((await syncRepositoryNow(slug, serviceId, result.mappingId!)).status).toBe("unavailable");
+    expect((await syncRepositoryNow(otherSlug, serviceId, mappingId)).status).toBe("unavailable");
+    expect(await setRepositoryEnabled(otherSlug, serviceId, mappingId, 1, false)).toHaveProperty("error");
+    await expect(getServiceIntegrationPageData(otherSlug, serviceId)).rejects.toThrow("not-found");
+    await expect(getServiceIntegrationPageData(slug, foreignService)).rejects.toThrow("not-found");
+    const page = await getServiceIntegrationPageData(slug, serviceId);
+    expect(page.repositories.map((row) => row.id)).toEqual([linkId]);
+    expect(page.integrations[0].repositories.map((row) => row.id)).toEqual([mappingId]);
+    expect(page.integrations[0].repositories[0]).not.toHaveProperty("leaseToken");
+    expect(page.integrations[0].currentApp).toBe(true);
+    const workspacePage = await getIntegrationPageData(slug);
+    expect(workspacePage).not.toHaveProperty("repositories");
+    expect(workspacePage.integrations[0]).not.toHaveProperty("repositories");
+    expect(upstream.getRepository).not.toHaveBeenCalled();
+    expect(upstream.listAlerts).not.toHaveBeenCalled();
+  });
+  it("retains disabled and previous App status plus all service URL choices in the scoped read model", async () => {
+    await db.update(workspaceIntegration).set({ appId: "previous-app", enabled: false }).where(eq(workspaceIntegration.id, integrationId));
+    const nonGithubLink = randomUUID();
+    await db.insert(serviceRepository).values({ id: nonGithubLink, serviceId, url: "https://gitlab.com/example/project" });
+    await db.update(integrationRepository).set({ errorCode: "not_found", lastSuccessAt: new Date("2026-01-01") }).where(eq(integrationRepository.id, mappingId));
+    const page = await getServiceIntegrationPageData(slug, serviceId);
+    expect(page.repositories.map((row) => row.id)).toContain(nonGithubLink);
+    expect(page.integrations[0]).toMatchObject({ currentApp: false, enabled: false });
+    expect(page.integrations[0].repositories[0]).toMatchObject({ id: mappingId, errorCode: "not_found", lastSuccessAt: new Date("2026-01-01") });
+  });
+  it.each(["link-service", "installation"])("rechecks %s after provider verification before connecting", async (change) => {
+    const extraLink = randomUUID();
+    await db.insert(serviceRepository).values({ id: extraLink, serviceId, url: `${repository.url}.git` });
+    upstream.getRepository.mockImplementationOnce(async () => {
+      if (change === "link-service") {
+        await db.update(serviceRepository).set({ serviceId: siblingService }).where(eq(serviceRepository.id, extraLink));
+      } else {
+        await db.update(workspaceIntegration).set({ installationId: `${installation.id}9` }).where(eq(workspaceIntegration.id, integrationId));
+      }
+      return repository;
+    });
+    try {
+      expect(await connectRepository(slug, serviceId, integrationId, extraLink)).toHaveProperty("error");
+      expect(await db.select().from(integrationRepository).where(eq(integrationRepository.repositoryLinkId, extraLink))).toHaveLength(0);
+    } finally {
+      await db.delete(serviceRepository).where(eq(serviceRepository.id, extraLink));
+    }
+  });
+  it.each([undefined, null, 1, ""])("rejects invalid service input %s", async (input) => {
+    const invalid = input as unknown as string;
+    expect(await connectRepository(slug, invalid, integrationId, linkId)).toHaveProperty("error");
+    expect(await setRepositoryEnabled(slug, invalid, mappingId, 1, false)).toHaveProperty("error");
+    expect((await syncRepositoryNow(slug, invalid, mappingId)).status).toBe("unavailable");
+    await expect(getServiceIntegrationPageData(slug, invalid)).rejects.toThrow("not-found");
+    expect(upstream.getRepository).not.toHaveBeenCalled();
+    request.headers = new Headers();
+    await expect(connectRepository(slug, invalid, integrationId, linkId)).rejects.toThrow("redirect:/login");
+    await expect(setRepositoryEnabled(slug, invalid, mappingId, 1, false)).rejects.toThrow("redirect:/login");
+    await expect(syncRepositoryNow(slug, invalid, mappingId)).rejects.toThrow("redirect:/login");
   });
   it("imports only unseen open alerts, refreshes all source states and preserves every local field and reference", async () => {
     upstream.listAlerts.mockResolvedValue([
@@ -480,7 +569,7 @@ describe("Dependabot tenant isolation and fenced persistence", () => {
       alert(3, { state: "dismissed" }),
       alert(4, { state: "auto_dismissed" }),
     ]);
-    expect(await syncRepositoryNow(slug, mappingId)).toMatchObject({
+    expect(await syncRepositoryNow(slug, serviceId, mappingId)).toMatchObject({
       status: "success",
       imported: 1,
     });
@@ -522,7 +611,7 @@ describe("Dependabot tenant isolation and fenced persistence", () => {
       upstream.listAlerts.mockResolvedValue([
         alert(1, { state, summary: "Upstream changed", severity: "critical" }),
       ]);
-      expect((await syncRepositoryNow(slug, mappingId)).status).toBe("success");
+      expect((await syncRepositoryNow(slug, serviceId, mappingId)).status).toBe("success");
       expect(
         (await db.select().from(finding).where(eq(finding.id, created.id)))[0],
       ).toEqual(local);
@@ -535,7 +624,7 @@ describe("Dependabot tenant isolation and fenced persistence", () => {
       expect(detail.references).toEqual([]);
     }
     upstream.listAlerts.mockResolvedValue([]);
-    await syncRepositoryNow(slug, mappingId);
+    await syncRepositoryNow(slug, serviceId, mappingId);
     expect(
       await db
         .select()
@@ -548,24 +637,24 @@ describe("Dependabot tenant isolation and fenced persistence", () => {
   });
   it("serializes repeated/concurrent sync and rejects stale configuration versions", async () => {
     const blocked = await blockedSync();
-    expect((await syncRepositoryNow(slug, mappingId)).status).toBe("busy");
+    expect((await syncRepositoryNow(slug, serviceId, mappingId)).status).toBe("busy");
     expect(
-      await setRepositoryEnabled(slug, mappingId, 999, false),
+      await setRepositoryEnabled(slug, serviceId, mappingId, 999, false),
     ).toMatchObject({ conflict: true });
     blocked.release.resolve();
     expect((await blocked.pending).status).toBe("success");
-    expect((await syncRepositoryNow(slug, mappingId)).imported).toBe(0);
+    expect((await syncRepositoryNow(slug, serviceId, mappingId)).imported).toBe(0);
     expect(
       await db.select().from(finding).where(eq(finding.serviceId, serviceId)),
     ).toHaveLength(1);
   });
   it("keeps newer upstream state when an older alias-mapping snapshot commits last", async () => {
-    expect((await syncRepositoryNow(slug, mappingId)).status).toBe("success");
+    expect((await syncRepositoryNow(slug, serviceId, mappingId)).status).toBe("success");
     const aliasId = randomUUID();
     await db
       .insert(serviceRepository)
       .values({ id: aliasId, serviceId, url: `${repository.url}.git` });
-    const alias = await connectRepository(slug, integrationId, aliasId);
+    const alias = await connectRepository(slug, serviceId, integrationId, aliasId);
     if (!("ok" in alias)) throw new Error("alias connection failed");
     const old = await blockedSync();
     upstream.listAlerts.mockResolvedValueOnce([
@@ -575,7 +664,7 @@ describe("Dependabot tenant isolation and fenced persistence", () => {
         updatedAt: "2026-02-01T00:00:00Z",
       }),
     ]);
-    expect((await syncRepositoryNow(slug, alias.mappingId!)).status).toBe(
+    expect((await syncRepositoryNow(slug, serviceId, alias.mappingId!)).status).toBe(
       "success",
     );
     old.release.resolve();
@@ -618,7 +707,7 @@ describe("Dependabot tenant isolation and fenced persistence", () => {
       await release.promise;
       throw new GithubError("rate_limited", new Date(Date.now() + 600000));
     });
-    const old = syncRepositoryNow(slug, mappingId);
+    const old = syncRepositoryNow(slug, serviceId, mappingId);
     await entered.promise;
     await db
       .update(integrationRepository)
@@ -643,8 +732,8 @@ describe("Dependabot tenant isolation and fenced persistence", () => {
       }
       if (change === "mapping") {
         const m = await mapping();
-        await setRepositoryEnabled(slug, mappingId, m.version, false);
-        await setRepositoryEnabled(slug, mappingId, m.version + 1, true);
+        await setRepositoryEnabled(slug, serviceId, mappingId, m.version, false);
+        await setRepositoryEnabled(slug, serviceId, mappingId, m.version + 1, true);
       }
       if (change === "archive") {
         await db
@@ -668,7 +757,7 @@ describe("Dependabot tenant isolation and fenced persistence", () => {
     }
   });
   it("retains provenance across repository removal/re-add, supports rename by immutable ID and fails identity mismatch", async () => {
-    await syncRepositoryNow(slug, mappingId);
+    await syncRepositoryNow(slug, serviceId, mappingId);
     const pending = await blockedSync();
     await db.delete(serviceRepository).where(eq(serviceRepository.id, linkId));
     pending.release.resolve();
@@ -694,13 +783,13 @@ describe("Dependabot tenant isolation and fenced persistence", () => {
       fullName: "example/renamed",
       url: "https://github.com/example/renamed",
     });
-    expect((await syncRepositoryNow(slug, mappingId)).status).toBe("success");
+    expect((await syncRepositoryNow(slug, serviceId, mappingId)).status).toBe("success");
     expect((await mapping()).fullName).toBe("example/renamed");
     expect(
       await db.select().from(finding).where(eq(finding.serviceId, serviceId)),
     ).toHaveLength(1);
     upstream.getRepository.mockResolvedValue({ ...repository, id: "201" });
-    expect((await syncRepositoryNow(slug, mappingId)).status).toBe("failed");
+    expect((await syncRepositoryNow(slug, serviceId, mappingId)).status).toBe("failed");
     expect(
       await db.select().from(finding).where(eq(finding.serviceId, serviceId)),
     ).toHaveLength(1);
@@ -711,7 +800,7 @@ describe("Dependabot tenant isolation and fenced persistence", () => {
       .insert(serviceRepository)
       .values({ id: secondLink, serviceId, url: `${repository.url}.git` });
     const secondConnection = await connectRepository(
-      slug,
+      slug, serviceId,
       integrationId,
       secondLink,
     );
@@ -720,8 +809,8 @@ describe("Dependabot tenant isolation and fenced persistence", () => {
     upstream.listAlerts.mockRejectedValueOnce(
       new GithubError("invalid_response"),
     );
-    expect((await syncRepositoryNow(slug, mappingId)).status).toBe("failed");
-    expect((await syncRepositoryNow(slug, mappingId)).status).toBe("busy");
+    expect((await syncRepositoryNow(slug, serviceId, mappingId)).status).toBe("failed");
+    expect((await syncRepositoryNow(slug, serviceId, mappingId)).status).toBe("busy");
     expect(
       await db.select().from(finding).where(eq(finding.serviceId, serviceId)),
     ).toHaveLength(0);
@@ -734,7 +823,7 @@ describe("Dependabot tenant isolation and fenced persistence", () => {
       alert(),
       alert(2, { severity: "invalid" as "high" }),
     ]);
-    expect((await syncRepositoryNow(slug, mappingId)).status).toBe("failed");
+    expect((await syncRepositoryNow(slug, serviceId, mappingId)).status).toBe("failed");
     expect(
       await db.select().from(finding).where(eq(finding.serviceId, serviceId)),
     ).toHaveLength(0);
@@ -745,12 +834,12 @@ describe("Dependabot tenant isolation and fenced persistence", () => {
     upstream.listAlerts.mockRejectedValueOnce(
       new GithubError("rate_limited", new Date(Date.now() + 600_000)),
     );
-    expect((await syncRepositoryNow(slug, mappingId)).status).toBe("failed");
+    expect((await syncRepositoryNow(slug, serviceId, mappingId)).status).toBe("failed");
     const calls = upstream.listAlerts.mock.calls.length;
-    expect((await syncRepositoryNow(slug, mappingId)).status).toBe("busy");
+    expect((await syncRepositoryNow(slug, serviceId, mappingId)).status).toBe("busy");
     expect(upstream.listAlerts.mock.calls.length).toBe(calls);
     expect(
-      (await syncRepositoryNow(slug, secondConnection.mappingId!)).status,
+      (await syncRepositoryNow(slug, serviceId, secondConnection.mappingId!)).status,
     ).toBe("busy");
     expect(upstream.listAlerts.mock.calls.length).toBe(calls);
     expect(await runNextSync(slug)).toBeNull();

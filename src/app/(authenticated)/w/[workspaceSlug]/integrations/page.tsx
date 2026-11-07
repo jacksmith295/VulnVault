@@ -9,7 +9,7 @@ import { getIntegrationPageData } from "@/features/integrations/data";
 import { IntegrationList } from "@/features/integrations/components/IntegrationList";
 import { requireWorkspace } from "@/features/workspaces/data";
 
-export const metadata: Metadata = { title: "Integrations" };
+export const metadata: Metadata = { title: "Workspace connections" };
 
 export default async function IntegrationsPage({
   params,
@@ -19,9 +19,9 @@ export default async function IntegrationsPage({
   const { workspaceSlug } = await params;
   const workspace = await requireWorkspace(workspaceSlug, ["owner", "admin"]);
   return (
-    <Page>
+    <Page width="readable">
       <PageHeader
-        title="Integrations"
+        title="Workspace connections"
         description={workspace.name}
         back={
           <TextLink href={`/w/${workspace.slug}`}>Back to workspace</TextLink>
@@ -41,7 +41,7 @@ async function IntegrationContent({ slug }: { slug: string }) {
 
 function IntegrationSkeleton() {
   return (
-    <LoadingRegion label="Loading integrations">
+    <LoadingRegion label="Loading workspace connections">
       <Section>
         <Stack>
           <Skeleton size="label" />
