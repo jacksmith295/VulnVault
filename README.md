@@ -44,6 +44,8 @@ Compose exposes PostgreSQL at `localhost:5432`, SMTP at `127.0.0.1:1025`, and th
 
 Optional Docker overlays run a production build on your PC for trusted Wi-Fi HTTP access or private Tailscale HTTPS access. They reuse the existing local database and Mailpit when the same Compose project is selected. These modes are alternatives, and the PC must stay awake and online. See [the local hosting guide](docs/local-hosting.md) for setup, project and credential safeguards, access policies, and stopping or switching modes. Normal development continues to use Next.js on the host. Container GitHub sync is disabled; scheduled polling remains a host process.
 
+Use the [local recovery runbook](docs/local-recovery.md) to take a private backup and rehearse restore, migration, and login in an isolated database from a separate checkout. It includes credential/session safeguards and a future cutover checklist; it does not perform a live cutover or prove real-project remediation and polling recovery.
+
 ## Verification
 
 Start the separate, disposable test database from the repository root:
@@ -64,6 +66,8 @@ npm run test:e2e
 ```
 
 Set `TEST_DATABASE_URL` as shown in `.env.example`. Tests use the isolated database on port `55433`, never the application database. Integration tests manage their own fixtures and migrations. Browser tests start a separate application server on port `3100` against the test database, apply its migrations, and use Mailpit for real verification and recovery flows. Run integration and browser suites sequentially. Install Playwright's system dependencies if your OS requires them.
+
+The browser recovery rehearsals also require the Docker CLI, access to the already-required Docker daemon, and the PostgreSQL 17 image for dump/restore tools. Their host networking targets Linux, including the Ubuntu CI runner. They use synthetic archives and temporary databases, not the owner's project backup; see the [recovery runbook](docs/local-recovery.md).
 
 The test database uses temporary container storage; its contents are disposable. Browser tests use unique email addresses and do not clear the development inbox. Browser artifacts are ignored by Git and may contain sensitive test data; do not publish them indiscriminately.
 

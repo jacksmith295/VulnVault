@@ -22,25 +22,25 @@ The initial product is self-hosted locally: Next.js on the host for development,
 
 Reliability fixes from PR #16 are merged: continuous polling recovers from unexpected database failures, configured-App mappings cannot be starved by old mappings, mobile status selection and valid drafts survive refreshes, and integration toggle failures return recoverable feedback. Worker, PostgreSQL, and browser regressions cover these outcomes alongside existing permission, concurrency, and data-preservation checks.
 
+Safe mutation-failure diagnostics and the dated [dependency triage](dependency-review.md) are merged in PR #20. Diagnostics use allowlisted operations/categories and preserve existing client feedback, permissions, transactions, and specialised auth/provider handling. Three advisories remain open because compatible fixes are unavailable; the review records exposure limits and revisit conditions, with package versions unchanged.
+
+## Implemented, awaiting merge
+
+The [local recovery runbook](local-recovery.md) and synthetic browser rehearsals are implemented, independently reviewed, and locally verified on the recovery branch, awaiting CI and merge. They cover private backups, isolated restore, actual existing-data migrations, session/token revocation, disabled integrations and cleared leases, and recovered application login. A pre-integration migration baseline and current snapshot exercise both upgrade and recovery. No app/schema/dependency changes or live cutover are included.
+
 ## Next delivery slices
 
-### 1. Safe diagnostics and dependency triage
-
-CI verification is merged. Safe mutation-failure diagnostics and a dated [dependency triage](dependency-review.md) are implemented on the feature branch, awaiting review, verification, and merge. Diagnostic entries contain only allowlisted operations and categories; existing client feedback, permissions, transactions, and specialised auth/provider handling remain unchanged. The three dependency advisories remain open because compatible patched parent releases are unavailable; the review records exposure limits and revisit conditions, with package versions unchanged.
-
-After this slice merges, start the real-project recovery trial below. Revisit dependencies when compatible fixes or affected usage change, preserving the [authentication hardening checks](auth-hardening.md). Separate quick unit-test setup from database setup when demonstrated development needs justify it.
-
-### 2. Real-project trial and local recovery
-
-Use the owner's projects to validate import, triage, remediation, and recovery before expanding integrations. Practise local backup/restore and an upgrade with existing data, including application/worker restart and polling recovery. Document repeatable steps and remaining gaps.
-
-The solo MVP is useful when the owner can import relevant alerts, triage them, fix the project upstream, verify refreshed upstream state, and explicitly resolve or reopen the local finding. Repeated sync must avoid duplicates and preserve local decisions. Manual findings, access boundaries, and durable data must remain reliable through restart, restore, and upgrade.
-
-Use this trial to agree on completion and discover the next usability needs.
-
-### 3. Triage usability design
+### 1. Triage usability design
 
 Design imported-finding search across title, package, GHSA, and CVE, plus source and upstream-state filters. Make service finding lists compact and bounded; they currently load all rows. Agree on explicit reconciliation behaviour before adding actions that apply upstream changes locally. Preserve the separation between upstream facts and local decisions.
+
+### 2. Separate real-project follow-up
+
+The owner selected recovery only for this slice. The real-project import, triage, upstream remediation, refreshed upstream state, and explicit local resolve/reopen trial remains pending. VulnVault's three advisories currently lack compatible fixes; the synthetic rehearsal does not establish real-project remediation or live polling recovery. Revisit dependencies when compatible fixes or affected usage change, preserving the [authentication hardening checks](auth-hardening.md).
+
+Use the runbook with an actual private archive and agree any live upgrade/cutover separately, including application/worker restart and polling recovery. Manual findings, permissions, provenance, local decisions, and deduplication must survive. Use the trial to agree solo MVP completion and identify remaining usability needs.
+
+Separate quick unit-test setup from database setup when demonstrated development needs justify it.
 
 ## Planned improvements
 
