@@ -1,5 +1,7 @@
 # Board interactions and visual refinement
 
+The board interaction and visual refinements are implemented.
+
 ## Scope
 
 Make triage easier to scan and operate while retaining the shared component
@@ -62,7 +64,3 @@ touch scrolling, cancellation, disabled archived findings, pending updates,
 stale versions, changed access, delayed responses, pagination, filtered-out
 destinations and responsive transitions. Preserve existing axe, focus, dirty-form,
 motion and authorisation regressions. Use only the separate test database.
-
-Run lint, TypeScript, a production build and the relevant automated/browser
-suites. Obtain independent plan and implementation reviews, then review the
-published PR before handing it over for the user's merge approval.

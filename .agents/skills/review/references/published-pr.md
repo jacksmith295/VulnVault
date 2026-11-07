@@ -1,47 +1,48 @@
 # Published PR review and handoff
 
-Use this workflow when a PR handoff or posted review is authorised by the user or
-repository rules. A request for review findings alone does not authorise posting,
-including follow-up reviews.
+Posting requires user or repository-workflow authorisation. A request for findings
+alone does not authorise submission or follow-up comments.
 
-## Inspect the published result
+## Assess the published result
 
-Complete independent implementation review before opening a PR. After publication,
-use a fresh reviewer who did not implement the changes, as required by `AGENTS.md`.
-Read the published description, full diff, relevant discussions and check results;
-record repository, PR number, head SHA and target branch/base commit. Assess any
-unresolved earlier findings. Check evidence for this head, not an older commit.
+Record the repository, PR number, head SHA and target/base commit. Inspect the
+description, diff, relevant discussions, unresolved findings and head-specific checks.
 
-Before submission, recheck the head and target. If they changed, assess the updated
-diff and checks before posting. Anchor the review to the reviewed head when the
-tool supports it. Distinguish local results from CI and treat absent, inaccessible,
-pending or failed checks accurately.
+Use an identifiable completed independent review when it covers the relevant code
+and base. Compare that reviewed result with the published diff; assess any new
+changes and base interactions. Publication does not require a fresh reviewer or
+another full code review solely because the PR now exists. Missing or incomplete
+prior review, substantive changes or material base interactions require further
+substantive independent review before handoff.
 
-## Submit the review as a comment
+Recheck head and target before submission. If either changed, assess the updated
+diff and verification before posting. Anchor the comment to the reviewed head
+where supported. Attribute local and CI evidence accurately; absent, pending,
+inaccessible or failed checks remain incomplete verification.
 
-- Always use `COMMENT`. State **Agent review: approved** when review is complete,
-  required checks passed and no unresolved blockers remain; otherwise give findings
+## Submit the assessment
+
+- Always use `COMMENT`. State **Agent review: approved** only when review is complete,
+  required checks passed and no unresolved blockers remain. Otherwise give findings
   or missing verification. Do not repeat platform approval limitations.
-- Explain the code-specific assessment: which changed paths were traced, why the
-  implementation works, which safeguards remain, and what relevant tests exercise.
-  Cite useful file/line locations and scale the detail to the change; a generic
-  statement that the diff was reviewed is insufficient.
-- After fixes, reassess the updated diff and affected checks. When posting remains
-  authorised, submit a follow-up stating what was resolved and what remains.
+- Explain the change-specific assessment: paths or instructions examined, resulting
+  behaviour, retained safeguards and relevant verification. Cite useful locations
+  and scale detail to the change; a generic claim that the diff was reviewed is insufficient.
+- After fixes, reassess affected changes and checks. When posting remains authorised,
+  submit a follow-up explaining what was resolved and what remains.
 
-Report the posted review link and outcome. If posting fails, say so and provide
-the review text; an attempted submission is not a posted review.
+Report the posted review link. If posting fails, provide the review text and say it
+was not posted.
 
 ## Handoff
 
-Give one evidence-based recommendation for the reviewed head:
+Give one recommendation for the reviewed head:
 
 | Recommendation | Condition and next action |
 | --- | --- |
-| Ready for your merge approval | Review and required checks complete, no unresolved blocker. Separate optional follow-ups. |
-| Return to development | Defects, unmet scope or missing implementation/tests need code changes; name the blockers. |
-| Wait for verification | No confirmed code blocker, but checks or review evidence remain incomplete; name what must complete. |
+| Ready for your merge approval | Review and required checks complete, with no unresolved blocker. Separate optional follow-ups. |
+| Return to development | Defects or unmet scope require changes; name the blockers. |
+| Wait for verification | No confirmed code blocker, but checks or review evidence are incomplete; name what must complete. |
 
-New commits require an updated assessment. A review recommendation
-does not grant merge permission; honour existing task-specific user merge
-authorisation rather than asking again when it has already been given.
+New commits require an updated assessment. Honour existing task-specific merge
+authorisation; a review recommendation alone does not grant it.

@@ -1,104 +1,50 @@
 # Authentication and workspace foundation
 
-Status: authentication and workspace onboarding are merged in PRs 1 and 2. Services, UI foundations, findings, and service access groups are merged in PRs 3 through 7. This document records the original foundation and delivery plan; later permissions and locking follow the [service access groups plan](service-access-groups-plan.md). Invitations remain a later slice.
+Authentication and workspace onboarding are implemented. Invitations and membership administration remain deferred. Current service permissions and locking follow the [service access reference](service-access-groups-plan.md).
 
-## Outcome
+## Tooling and ownership
 
-A user registers, verifies their email using the development inbox, and signs in. They can create a workspace or follow an invitation to join one. A solo developer follows the same flow and owns a workspace with one member. A user with multiple memberships can select a workspace. Users without membership see onboarding rather than workspace data.
+Better Auth supplies email/password authentication, opaque database sessions, and organisation tables exposed as workspaces. Drizzle manages PostgreSQL queries and reviewed SQL migrations. Mailpit receives local email. Authentication remains independent of repository integrations; application service and finding permissions are enforced by the application.
 
-## Selected tooling for the first slice
-
-| Responsibility | Choice | Reason |
-| --- | --- | --- |
-| Authentication | Better Auth | Integrates with Next.js and provides email/password and session handling. |
-| Workspace membership | Better Auth organisation plugin, called workspaces in the UI | Reuses membership and invitation infrastructure rather than creating a second identity system. |
-| Database access | Drizzle ORM with PostgreSQL | TypeScript schemas and queries while keeping SQL concepts visible for learning. |
-| Schema changes | Drizzle Kit generated SQL migrations | Review and commit migrations, then apply them explicitly. Avoid routine schema push or database resets. |
-| Development email | Mailpit with SMTP delivery | Inspect verification, reset, and invitation emails locally. |
-| Tests | Vitest for relevant logic/integration tests; Playwright for key browser flows | Exercise real auth and access boundaries, rather than mocking away the behaviour being verified. |
-
-Better Auth documents [Next.js integration](https://better-auth.com/docs/integrations/next), [email/password support](https://better-auth.com/docs/authentication/email-password), an [organisation plugin](https://better-auth.com/docs/plugins/organization), and a [Drizzle adapter](https://better-auth.com/docs/adapters/drizzle). The plugin supplies the membership foundation; application-specific service and finding permissions remain our responsibility.
-
-Drizzle Kit supports [generating and applying SQL migrations](https://orm.drizzle.team/docs/kit-overview). Mailpit supplies an [official Docker image and local SMTP/UI interfaces](https://mailpit.axllent.org/docs/install/docker/).
-
-These choices keep auth and persistence in the existing application. A separate identity service or backend would add operational work without a current requirement. Drizzle is used for this slice; reconsidering the persistence layer would require a new design discussion.
-
-The implementation pins newly selected dependencies and commits the application lockfile. Verify compatible versions and security advisories when updating dependencies. Generate library schema against the configured version and review it alongside application constraints. The application uses Node.js 24 LTS.
-
-## Data ownership
-
-| Concept | Purpose and boundaries |
+| Record | Boundary |
 | --- | --- |
-| User | Global account identity, display name, unique normalised email, verification state, timestamps. |
-| Account | Library-managed credentials/provider identity linked to a user. Password hashes belong here according to the selected library schema, not in a second custom password table. |
-| Session | Library-managed server-side session linked to a user, with expiry and revocation. Workspace selection is not proof of permission. |
-| Verification | Library-managed lifecycle for email verification and password recovery. Verify storage and expiry behaviour for the pinned version. |
-| Workspace | Library organisation record: immutable identity, display name, unique slug, timestamps. UI and domain terminology use workspace; retain library schema conventions where practical. |
-| Membership | Links a user and workspace with a role. Enforce one membership per user/workspace pair with a database constraint. |
-| Invitation | Workspace, recipient email, intended role, inviter, status, and expiry. Persist the library schema and verify acceptance semantics before building UI. |
+| User | Global identity, unique normalised email and verification state. |
+| Account | Library-managed credentials and password hashes, without a competing password table. |
+| Session | Server-side expiry and revocation; workspace selection is never permission evidence. |
+| Verification | Library-managed verification and password-recovery lifecycle. |
+| Workspace | Organisation identity, display name and installation-unique slug. |
+| Membership | User/workspace link and role, unique per pair. |
+| Invitation | Library schema is present, but invitation operations and UI are disabled. |
 
-Generate the library's required tables and review foreign keys, uniqueness, indexes, and deletion behaviour. Add necessary constraints through migrations without maintaining a competing membership or authentication system. Agree on actual columns and constraints before schema implementation.
+Registration creates neither a workspace nor membership. A verified user can create a workspace, becoming its owner atomically. Solo users use this same model. Services and integrations belong to workspaces; findings belong to services. Cross-workspace references must fail even when a supplied resource ID exists elsewhere.
 
-Services will reference workspace identity, independent of any member's account. Findings and integrations will be workspace-owned; later designs must prevent cross-workspace references, including when an attacker supplies a valid resource ID from another workspace. Those domain tables are outside this implementation slice.
+## Roles and server boundaries
 
-## Agreed role responsibilities and initial access boundaries
+Owners control ownership and destructive settings; admins manage routine settings and members when those operations are enabled. Members perform finding work within accessible services. Unknown roles fail closed. Current service and group permissions are defined in the [service access reference](service-access-groups-plan.md).
 
-- Owner: workspace settings, invitations, membership administration, and future service/finding management. Workspace creator receives this role.
-- Admin: routine workspace and member administration, without granting ownership, changing owners, or deleting the workspace.
-- Member: normal service/finding work, without member or workspace administration.
-- All authenticated, verified users may create a workspace. Workspace names need not identify a registered company.
-- No instance-wide administrator is needed for the first slice.
-- Ownership transfer, workspace deletion, account deletion, and leaving/removing the last owner are deferred UI features. Direct library endpoints must still enforce the intended policy; hiding controls is insufficient.
+Workspace creation uses an explicit application transaction, not the organisation plugin creation endpoint. Plugin organisation endpoints remain blocked, including direct calls without UI. Ownership transfer, workspace/account deletion, leaving, member removal and invitations are not exposed. Future membership operations must prevent loss of the last owner and follow the workspace permission-lock protocol.
 
-Role responsibilities are agreed, but plugin defaults still require review before workspace operations are enabled. Review and configure server-side plugin permissions and hooks, including endpoints without UI. Prevent loss of the last owner. Add explicit tests for role escalation and membership removal. Future service/finding permissions need agreement when those features are designed.
+The auth handler is `/api/auth/[...all]`. Server Components perform protected reads; application mutations use Server Actions. Session, membership and permission guards live close to data access and run at each exposed server entry point. Layout redirects and hidden controls do not provide authorisation.
+
+Routes use explicit `/w/[workspaceSlug]` context. Resolve it with current membership, scope resource queries by workspace and resource identity, and avoid shared permission/result caches. A selection in another browser tab must not retarget a mutation. See [workspace onboarding](workspace-onboarding-plan.md) for the navigation preference and atomic creation details.
 
 ## Authentication and email policy
 
-Email verification and session behaviour are agreed. Other lifetimes below are implementation defaults:
+- Verification is required before normal sign-in or workspace creation. Development uses Mailpit without a verification bypass.
+- Passwords are 8 to 128 characters. Library-managed hashing and opaque database sessions keep bearer credentials out of browser local storage.
+- Sessions last seven days and refresh after one day of activity. Cookie session caching is disabled so revocation uses current server state.
+- Server Component reads do not renew sessions. The browser checks on mount, focus and every 60 seconds while online; when due, the library refreshes both database expiry and cookie. An open tab can keep a session alive, so this is not a strict human-inactivity timeout.
+- Password reset links last one hour, are single-use and revoke existing sessions on success. Completion returns to login. Verification links last 24 hours.
+- Generic credential/reset feedback, bounded local request rates, callback restrictions and trusted origins protect exposed endpoints. Never trust arbitrary forwarded IP headers. Local database and inbox ports bind to loopback.
 
-- Require email verification before normal sign-in, workspace creation, or invitation acceptance. Keep the local flow realistic by verifying through Mailpit rather than adding a bypass.
-- Use library-managed password hashing and opaque database sessions. Do not store bearer credentials in browser local storage.
-- Start with a seven-day session lifetime refreshed after one day of activity. Avoid cookie session caching initially so revocation does not depend on a stale cached session.
-- Server Components read sessions without renewing them. The authenticated browser checks sessions on mount, focus, and every 60 seconds while online; when due, the library posts a refresh to renew both the database expiry and browser cookie. An open tab can keep a session alive, so this is not a strict human-inactivity timeout.
-- Password reset links expire after one hour, are single-use, and revoke existing sessions when reset succeeds. Reset completion returns the user to login.
-- Verification links expire after 24 hours; invitations after seven days. Confirm each lifetime is configurable in the chosen version before promising it.
-- Use generic login/reset responses where appropriate, and bounded auth/email request rates. Test that throttling is active in the local environment rather than relying on production-only defaults.
-- Restrict callback destinations and trusted origins. Bind local database and inbox ports to loopback. Keep development credentials separate from future hosting configuration.
-- Invitation acceptance requires a signed-in user with the verified recipient email. Possessing a forwarded link or sharing an email domain grants no membership. Accepting twice must not create duplicate memberships; expired, cancelled, and wrong-recipient invitations must fail safely.
+The [authentication hardening reference](auth-hardening.md) records the credential transaction guard, throttling and upgrade-sensitive concurrency behaviour.
 
-The first slice retains passwords of 8 to 128 characters. Plugin workspace administration and invitation operations remain disabled until their reviewed implementation slices; the underlying tables are present. PR 2 creates workspaces through an application Server Action with an explicit transaction.
+## Deferred invitation and membership design
 
-## Next.js responsibilities
+The intended invitation lifetime is seven days. Acceptance must require a signed-in user with the verified recipient email; a forwarded link or matching email domain grants no membership. Repeated acceptance must not create duplicates. Expired, cancelled and wrong-recipient invitations must fail safely.
 
-- Mount the auth library's handler at `/api/auth/[...all]`. Use its client for credential and session operations; avoid a second set of custom authentication endpoints.
-- Use Server Components for initial protected reads and Server Actions for application mutations such as future service changes. Keep Route Handlers for the auth integration and future external callbacks/webhooks.
-- Centralise server-side session, membership, and permission checks in a small data-access layer. Every action and handler must enforce its own access requirements. Layout redirects and hidden buttons are user experience conveniences.
-- Use explicit workspace context in routes, proposed as `/w/[workspaceSlug]`. Resolve the slug to an ID and check membership on the server. Another tab changing its selected workspace must not redirect a mutation to a different tenant.
-- Query workspace resources with both workspace and resource identity. Avoid shared caches of user-specific or workspace-specific results.
-- Preserve the existing component style and user edits. Replace current credential `console.log` stubs when connecting the forms. Include loading states, clear errors, accessible controls, and functioning password visibility buttons.
+Before enabling invitations, agree on exact member administration and accept/reject behaviour, verify the pinned library's semantics, and carry invitation context through registration and verification using validated local return paths. Invitees must not be forced to create a workspace. Admins must not grant ownership, change owners or delete the workspace. Test role escalation, removal and last-owner protection, including direct plugin endpoints.
 
-This follows the Next.js guidance to put [authorisation checks close to data access](https://nextjs.org/docs/app/guides/authentication), including within exposed server operations.
+## Verification boundaries
 
-## Proposed delivery and acceptance
-
-### PR 1: Local infrastructure and working authentication
-
-Agree on and migrate the full auth/workspace foundation schema, but deliver authentication UI first. Add Compose PostgreSQL and Mailpit, configuration examples, migration commands, a committed lockfile, and setup documentation.
-
-Connect registration, verification/resend, login, logout, password reset, and a protected account landing page. Registration creates no workspace. Users without workspaces see an honest onboarding placeholder until PR 2.
-
-Verify migrations against an empty isolated database, credential validation, session expiry/revocation, reset replay and expiry, verification, signed-out access, and relevant error/rate-limit paths. Run browser checks for the complete account flow using Mailpit, plus lint, type checks, and build. Review generated SQL and all exposed plugin operations.
-
-### PR 2: Workspace onboarding and access
-
-Add workspace creation, a persistent header with a top-left workspace selector, an explicit All workspaces page, a protected workspace landing page, and role-aware access helpers. Login opens the last selected accessible workspace in this browser, with a stable fallback; users without memberships see onboarding. A cookie stores the preference as a navigation hint, and membership checks remain authoritative. Creation establishes the creator's owner membership atomically; failure must not leave an ownerless workspace. Do not add services yet.
-
-Verify creation, slug collision handling, multiple memberships, direct access denial for non-members, membership revocation, and correct workspace targeting across tabs. Where member-management UI is absent, create test memberships through controlled fixtures rather than weakening production access checks.
-
-### PR 3: Invitations and minimal membership management
-
-Add owner/admin invitations and a member list, plus accept/reject flows for new and existing accounts. Carry invitation context through signup and verification with validated local return paths. Do not force invitees to create a workspace.
-
-Verify recipient identity, expiry, cancellation, duplicate acceptance, disallowed roles, role changes/removal, and last-owner protection. Define the exact member-management scope before this PR.
-
-Use a separate implementation agent and independent reviewer for each PR. Review the design before implementation and review code, migrations, tests, and resolved findings before opening a PR for the user's approval. Keep test data isolated from the development database. Deployment remains out of scope.
+Relevant regressions cover verification, credential validation, session refresh/revocation, reset expiry/replay, throttling, blocked plugin endpoints, workspace creation rollback, membership-scoped reads and cross-tab workspace targeting. Setup and commands are maintained in the [README](../README.md#verification).
