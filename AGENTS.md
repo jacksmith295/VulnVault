@@ -106,6 +106,7 @@ Run application commands from the repository root:
 npm run dev
 npm run lint
 npm run typecheck
+npm run test:startup
 npm test
 npm run build
 npm run test:e2e

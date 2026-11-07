@@ -46,6 +46,8 @@ Optional Docker overlays run a production build on your PC for trusted Wi-Fi HTT
 
 Use the [local recovery runbook](docs/local-recovery.md) to take a private backup and rehearse restore, migration, and login in an isolated database from a separate checkout. It includes credential/session safeguards and a future cutover checklist; it does not perform a live cutover or prove real-project remediation and polling recovery.
 
+For an existing Linux Docker installation, [one-command startup](docs/local-startup.md) brings up the selected local stack and configured host integration worker. Run `npm run local:up`, or add `-- --build` to rebuild the app explicitly. It preserves the existing project and data and never applies migrations.
+
 ## Verification
 
 Start the separate, disposable test database from the repository root:
@@ -70,6 +72,8 @@ Set `TEST_DATABASE_URL` as shown in `.env.example`. Tests use the isolated datab
 The browser recovery rehearsals also require the Docker CLI, access to the already-required Docker daemon, and the PostgreSQL 17 image for dump/restore tools. Their host networking targets Linux, including the Ubuntu CI runner. They use synthetic archives and temporary databases, not the owner's project backup; see the [recovery runbook](docs/local-recovery.md).
 
 The test database uses temporary container storage; its contents are disposable. Browser tests use unique email addresses and do not clear the development inbox. Browser artifacts are ignored by Git and may contain sensitive test data; do not publish them indiscriminately.
+
+Run `npm run test:startup` for isolated local-startup orchestration checks. These use private fixtures and stubbed Docker/systemd commands, with a separate real kernel-lock test; they do not start the application or require a database.
 
 ### Continuous integration
 
