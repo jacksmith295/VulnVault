@@ -155,9 +155,20 @@ export function BoardSpace({ children }: { children: ReactNode }) {
   return <div className="min-h-80 flex-1">{children}</div>;
 }
 
-export function FilterGrid({ children }: { children: ReactNode }) {
+export function FilterGrid({
+  children,
+  layout = "board",
+}: {
+  children: ReactNode;
+  layout?: "board" | "service";
+}) {
   return (
-    <div className="grid min-w-0 gap-4 lg:grid-cols-3 lg:items-end lg:gap-3 xl:grid-cols-[repeat(5,minmax(0,1fr))_auto]">
+    <div
+      className={cn(
+        "grid min-w-0 gap-4 lg:items-end lg:gap-3",
+        layout === "board" ? "lg:grid-cols-5" : "lg:grid-cols-3",
+      )}
+    >
       {children}
     </div>
   );
@@ -169,7 +180,7 @@ export function BoardFilterForm(props: ComponentProps<"form">) {
 
 export function BoardFilterActions({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-(--control-height) flex-wrap items-center gap-3 lg:col-span-3 xl:col-span-1">
+    <div className="flex min-h-(--control-height) flex-wrap items-center gap-3">
       {children}
     </div>
   );

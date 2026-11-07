@@ -29,7 +29,7 @@ export function FindingBoardSkeleton({
           <DesktopFilters>
             <BoardFilterForm>
               <FilterGrid>
-                {Array.from({ length: 5 }, (_, index) => (
+                {Array.from({ length: 8 }, (_, index) => (
                   <Stack gap="sm" key={index}>
                     <Skeleton size="label" />
                     <Skeleton size="control" />

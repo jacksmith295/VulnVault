@@ -930,7 +930,7 @@ test("mobile filters use a draft-preserving drawer and release focus on desktop 
     await page.setViewportSize({ width: 1024, height: 900 });
     await expect(dialog).not.toBeVisible();
     await expect(
-      page.getByRole("combobox", { name: "Group", exact: true }),
+      page.getByRole("searchbox", { name: "Search findings", exact: true }),
     ).toBeFocused();
     await expect(severity).toContainText("High");
     expect(
