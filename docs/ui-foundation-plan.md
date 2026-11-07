@@ -1,8 +1,8 @@
 # UI foundation and theming
 
-Status: merged in PR 4. Includes next-themes and the approved shared component architecture. The staged UI hook followed in PR 5.
+The shared component architecture, next-themes support and staged UI hook are implemented.
 
-## Agreed direction
+## Direction
 
 - Keep Tailwind, with styles in reusable component definitions and typed variants.
 - Refine the current green accent into a consistent application theme.
@@ -10,15 +10,9 @@ Status: merged in PR 4. Includes next-themes and the approved shared component a
 - Pages and feature components should compose reusable components with minimal raw HTML. Shared components own semantic HTML and presentation defaults.
 - Use styled Base UI primitives for interactive controls. Keep feature logic separate from reusable presentation.
 
-## Findings
-
-The app has a useful starting point: Base UI Button and Input, shadcn Base Nova conventions, semantic CSS variables, and shared AppHeader. However, route files and feature forms repeat container widths, spacing, headings, borders, links, field wrappers, errors, and controls. Service textareas and archive checkboxes are styled natively. Workspace navigation uses details and custom dismissal listeners.
-
-The dark palette currently loses the green brand accent. Light primary green with white foreground needs contrast adjustment. Typography, control sizing, spacing, focus treatment, and surfaces need consistent defaults.
-
 ## Component layers
 
-| Layer | Responsibility | Initial components |
+| Layer | Responsibility | Components |
 | --- | --- | --- |
 | Global theme | Semantic values and inherited foundations | Light/dark colour tokens, typography scale, control sizing, spacing, radii, shadows, focus, reduced motion |
 | `components/ui` | Styled primitives and variants | Button, link variants, Input, Textarea, Field parts, Checkbox, Menu parts, Card, Badge, feedback message, text/heading primitives |
@@ -37,23 +31,19 @@ Keep this inventory limited to patterns used by existing screens. Do not introdu
 - Raw semantic HTML belongs primarily in reusable component implementations. Maintain meaningful headings, valid links/buttons, labels, landmarks, error descriptions, and keyboard interaction.
 - Reuse the existing Card where suitable. Base UI supplies behaviour primitives, while application-owned layout, typography, and surface components supply presentation where no Base UI primitive exists.
 
-## Theme proposal
+## Theme behaviour
 
-Add `next-themes` for a class-based provider with a system default and browser-persisted preference. It handles system changes and early theme application; avoid maintaining another custom theme persistence/startup system. This is the only proposed new runtime dependency, subject to compatible-version verification.
+Use `next-themes` for a class-based provider with a system default and browser-persisted preference. It handles system changes and early theme application; avoid maintaining another custom theme persistence/startup system. The provider is already installed.
 
 Use a shared theme selector in the application header and public authentication shell. Light, Dark, and System are explicit choices. Keep server-rendered markup stable until theme-dependent client values are available. Theme changes must update variables/classes without remounting the application or clearing form state.
 
 Tune both palettes together: neutral surfaces, readable text, green primary/focus/accent, clear error and status colours, consistent borders and elevation. Check normal text contrast at 4.5:1 and large text at 3:1, plus distinguishable control boundaries and focus. Disabled controls must remain recognisable. Respect reduced motion.
 
-## Migration
+## Enforcement and composition
 
-1. Define tokens and theme support, then establish shared primitives and layout defaults against real screens.
-2. Replace the workspace selector with a styled Base UI Menu. Use the primitive for dismissal, keyboard navigation, positioning, and focus management; remove the native details and custom document listeners.
-3. Refactor authentication and workspace screens onto shared fields, messages, links, surfaces, and page/form layouts.
-4. Refactor service forms, service list/detail, repository links, archive confirmation, and empty states using the same components.
-5. Review both themes at desktop and mobile widths, update accessible browser selectors, and record the ownership rules in AGENTS.md. Enforce component composition and central styling with scoped ESLint rules; exempt the required root document HTML.
+The workspace selector uses a styled Base UI Menu for dismissal, keyboard navigation, positioning and focus management. Authentication, workspace and service screens compose shared fields, feedback, links, surfaces and layouts.
 
-Keep authentication, authorisation, transactions, validation schemas, server endpoints, migrations, URLs, and service lifecycle behaviour intact. Presentation changes must not become a reason to alter those contracts.
+Scoped ESLint rules and the staged hook enforce component composition and central styling in route and feature JSX/TSX. The required root document HTML is exempt. Presentation changes preserve authentication, authorisation, transactions, validation, server entry points, migrations, URLs and service lifecycle.
 
 ## Regression requirements
 
@@ -62,12 +52,10 @@ Keep authentication, authorisation, transactions, validation schemas, server end
 - Preserve service dirty input and its original version token together. Retain the slug/service ID component key. Theme changes and refreshed server props must not clear edits or permit stale overwrites.
 - Workspace menu supports pointer and keyboard use, outside dismissal, Escape and focus return, current-workspace indication, route changes, long names, and small viewports. Keep explicit URLs and membership-checked navigation preferences.
 - Composed Next links remain real links. Avoid nested anchors or buttons. Preserve one main landmark and meaningful heading levels.
-- Existing tests locating native details/summary must move to accessible menu trigger, menu, and menuitem roles. Test behaviour rather than the removed markup.
+- Tests use accessible menu trigger, menu and menuitem roles rather than removed native details/summary markup.
 - Verify theme persistence, first load, system preference changes, keyboard menu behaviour, mobile overflow, and theme switching with an unsaved service form.
 
-Run lint, TypeScript, the existing integration suite, production build, and browser tests sequentially. Use medium reasoning implementation and independent review agents, with clear ownership of primitives, migrations of screens, and verification. No database migration is expected.
-
-## References checked
+## References
 
 - [Base UI styling](https://base-ui.com/react/handbook/styling)
 - [Base UI composition](https://base-ui.com/react/handbook/composition)
@@ -75,4 +63,4 @@ Run lint, TypeScript, the existing integration suite, production build, and brow
 - [Base UI Field](https://base-ui.com/react/components/field)
 - [next-themes](https://github.com/pacocoursey/next-themes)
 
-Use installed Base UI 1.6 APIs when implementing; current online examples may show newer APIs. An upgrade is not required for this plan.
+Use APIs compatible with the installed Base UI version; online examples may describe a newer release.

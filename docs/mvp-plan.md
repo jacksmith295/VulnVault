@@ -2,50 +2,46 @@
 
 ## Direction
 
-Build a useful vulnerability tracker for the owner's real projects, while learning AI-assisted engineering. Keep delivery in small, reviewed slices. This roadmap records current capabilities and priorities; detailed behaviour belongs in the linked feature plans. Agree on each feature's design and acceptance criteria before implementation.
+Build a useful vulnerability tracker for the owner's projects while learning AI-assisted engineering. Workspaces provide one ownership model for solo developers and teams. Development and optional phone access remain [PC-local](local-hosting.md); public hosting and cloud infrastructure are deferred.
 
-The initial product is self-hosted locally: Next.js on the host for development, PostgreSQL and development email through Docker Compose. Optional [PC-local Docker hosting](local-hosting.md) supports phone access through trusted Wi-Fi or private Tailscale, with the PC remaining awake and online. Workspaces own services, findings, and integrations for solo developers and teams. Registration grants no workspace access. Authentication remains independent of repository providers. Public deployment and cloud infrastructure remain deferred.
+This file owns capability status and priorities. Technical references describe current contracts; working rules live in [AGENTS.md](../AGENTS.md). Reconcile merged work before the next slice.
 
 ## Current merged capabilities
 
 | Area | Available now |
 | --- | --- |
-| [Authentication](auth-workspace-design.md) and [hardening](auth-hardening.md) | Email/password accounts, required email verification, password reset, logout, protected access, and seven-day sessions refreshed with activity. Reset revokes existing sessions. |
-| [Workspaces](workspace-onboarding-plan.md) | Creation, onboarding, multiple memberships, and a persistent workspace selector with independent context for explicit URLs. Invitation and member-administration UI remain future work. |
-| [Services](service-management-plan.md) | Create, edit, archive, and restore. Repository links are optional: a service can have zero or multiple repositories. |
-| [Service access](service-access-groups-plan.md) | Default all-member access or custom groups, server-enforced workspace isolation, and workspace-first permission locking. Owners/admins manage services and groups; members access permitted services. Broadening access to the default group requires confirmation. |
-| [Manual findings](manual-findings-plan.md) | One service per finding; New, Triaged, In progress, Resolved, Rejected, and Accepted risk statuses, with reopening. Every known workspace role can create/update accessible findings. No role can delete findings; archived-service findings are read-only. |
-| [Workspace board](findings-board-plan.md), [interactions](board-interactions-plan.md), and [responsive UI](responsive-ui-plan.md) | Authorised filters, bounded columns with Load more, status menus and dragging, mobile status tabs, and responsive filters. [Shared UI and themes](ui-foundation-plan.md) support light/dark/system preferences. |
-| [Dependabot ingestion](dependabot-ingestion-plan.md) | Operator-bound GitHub App installations, workspace repository mappings, local polling and Sync now, recoverable sync status, deduplication, and retained provenance. Real alerts have been imported. Upstream state refreshes independently of local triage and edits. |
-| [PC-local hosting](local-hosting.md) | Optional production Docker app for trusted Wi-Fi HTTP or private Tailscale HTTPS. Existing Compose data and device identity are retained; the inbox stays local. Container GitHub sync is disabled; polling uses the host worker. |
-| [CI verification](../.github/workflows/verification.yml) | Node.js 24 checks on PRs and `main`, with disposable PostgreSQL/Mailpit and sequential lint, TypeScript, hook, application, build, and Chromium checks. |
+| [Authentication](auth-workspace-design.md) and [hardening](auth-hardening.md) | Verified email/password accounts, recovery, refreshed seven-day sessions and reset revocation. |
+| [Workspaces](workspace-onboarding-plan.md) | Creation, onboarding, multiple memberships and persistent selection. Registration grants no workspace access. |
+| [Services](service-management-plan.md) and [access groups](service-access-groups-plan.md) | Services with optional repositories, archive/restore, default or group-restricted access, server isolation and permission locking. |
+| [Findings](manual-findings-plan.md), [board](findings-board-plan.md) and [discovery](triage-discovery-plan.md) | Independent service lifecycles, manual entry, six triage statuses, search/source/upstream filters, bounded paging and [drag/menu moves](board-interactions-plan.md). Archived findings are read-only; no deletion. |
+| [Dependabot](dependabot-ingestion-plan.md) and [service integrations](service-integrations-plan.md) | Real alert imports, deduplication, retained provenance, independent upstream state, service-scoped setup/status/sync and GitHub recommendations. Workspace connections retain shared installation controls. Polling retries recoverable failures. |
+| [UI foundation](ui-foundation-plan.md), [responsive layout](responsive-ui-plan.md) and [accessibility](accessibility-review.md) | Light/dark/system themes, shared controls, responsive filters, stable loading/drafts and keyboard alternatives. |
+| [Hosting](local-hosting.md) and [startup](local-startup.md) | Docker LAN/Tailscale access preserving existing data/identity; one-command startup and a configured supervised host worker. Explicit builds; no automatic migrations or enrolment. |
+| [Recovery](local-recovery.md) | Private-backup runbook and synthetic restore/upgrade/login rehearsals. Actual private-archive recovery and live cutover are not established. |
+| [Verification](../.github/workflows/verification.yml) and [diagnostics](../src/lib/server/diagnostics.ts) | Disposable test infrastructure, CI lint/types/hook/startup/application/build/browser checks, and safe mutation failure categories. |
 
-Reliability fixes from PR #16 are merged: continuous polling recovers from unexpected database failures, configured-App mappings cannot be starved by old mappings, mobile status selection and valid drafts survive refreshes, and integration toggle failures return recoverable feedback. Worker, PostgreSQL, and browser regressions cover these outcomes alongside existing permission, concurrency, and data-preservation checks.
+The dated [dependency review](dependency-review.md) records three underlying open advisories. Dependency removal or upgrades need fresh audit and behaviour checks; the earlier lack of compatible upgrades does not rule out removing unnecessary dependencies.
 
-Safe mutation-failure diagnostics and the dated [dependency triage](dependency-review.md) are merged in PR #20. Diagnostics use allowlisted operations/categories and preserve existing client feedback, permissions, transactions, and specialised auth/provider handling. Three advisories remain open because compatible fixes are unavailable; the review records exposure limits and revisit conditions, with package versions unchanged.
+## Cleanup sequence
 
-The [local recovery runbook](local-recovery.md) and synthetic browser rehearsals are merged in PR #21. They verify isolated restore, real existing-data migrations, session/token revocation, integration containment and recovered login. Recovery of an actual private archive and live cutover remain separate follow-ups.
+Each group is a bounded scope to plan and verify before implementation. Grouping does not authorise live deployment, data changes, repository settings changes or higher reasoning effort.
 
-The [triage discovery slice](triage-discovery-plan.md) is merged in PR #22: shared board/service search across title, package, GHSA and CVE, source and upstream-state filters, and compact service lists with 20-row pages. Local triage decisions remain independent of upstream facts; reconciliation actions require a separate agreement.
+| Order | Group | Status and scope |
+| --- | --- | --- |
+| 1 | Working agreement and documentation | Implemented on the feature branch, awaiting merge: consolidated instructions, review effort proportional to risk, stale authorisations/status removed and current technical contracts retained. |
+| 2 | UI and dependencies | Planned next: revise feature-component HTML/styling boundaries with lint/hooks; remove unnecessary CSS packages/scaffold after verification; improve board paging focus/retry and field-associated errors; pass counts as data. |
+| 3 | Backend and tests | Planned: separate unit/persistence setup, remove duplicate GitHub token/metadata requests and consolidate repeated authorised reads without weakening mutation checks. Organisation-plugin removal is optional when next touching auth. |
+| 4 | Operations and repository controls | Planned: verify/enforce PR and CI requirements, simplify startup responsibilities while preserving safeguards, expose running app/worker revisions and remove obsolete worktrees/branches after checking unique work. |
+| 5 | Real-project validation | Planned: complete the remediation and actual private-archive trials below, then agree solo-MVP completion. |
 
-The [one-command PC startup](local-startup.md) slice is merged in PR #23. It reuses the existing Docker/Tailscale installation and image, offers explicit rebuilding, and supervises the configured host worker. Sudo is permitted only to start a stopped standard local Docker daemon. No migrations, data resets or Tailscale enrolment are included.
+## Solo MVP completion
 
-## Implemented, awaiting merge
-
-The [service integration workflow](service-integrations-plan.md) is implemented, independently reviewed and locally verified on the feature branch, awaiting merge. Repository connections, sync controls and status move into each service; GitHub is recommended from compatible linked URLs; installation setup/global controls remain workspace connections. Existing roles, archive rules and ingestion behaviour remain.
-
-## Next delivery slices
-
-### 1. Real-project follow-up
-
-The recovery slice deferred the real-project import, triage, upstream remediation, refreshed upstream state, and explicit local resolve/reopen trial. VulnVault's three advisories lacked compatible fixes at the [last dependency review](dependency-review.md); the synthetic rehearsal does not establish real-project remediation or live polling recovery. Revisit dependencies when compatible fixes or affected usage change, preserving the [authentication hardening checks](auth-hardening.md).
-
-Use the runbook with an actual private archive and agree any live upgrade/cutover separately, including application/worker restart and polling recovery. Manual findings, permissions, provenance, local decisions, and deduplication must survive. Use the trial to agree solo MVP completion and identify remaining usability needs.
-
-Separate quick unit-test setup from database setup when demonstrated development needs justify it.
+- Import a real fixable advisory, triage it, remediate upstream, refresh its upstream state and explicitly resolve/reopen locally. Dependency cleanup may supply a candidate; do not claim this trial from synthetic fixtures.
+- Rehearse recovery of an actual private archive using the [runbook](local-recovery.md), verifying permissions, manual findings, provenance, local decisions and deduplication.
+- Agree any live upgrade/cutover separately, including app/worker restart and polling recovery. Record observed results and remaining usability needs before declaring the solo MVP complete.
 
 ## Later decisions
 
-Assignment, invitations, and member administration remain agreed future work. Design them when another user needs to join. Activity history, accepted-risk review dates, and bulk actions are optional candidates rather than committed MVP scope.
+Assignment, invitations and member administration remain future work when another user needs to join. Activity history, accepted-risk review dates and bulk actions are optional candidates.
 
-Public CVE matching needs component inventory, versions, relevance rules, and noise control; a feed alone cannot identify affected services. Decide after the trial whether it belongs in the first useful MVP. Additional repository providers, separate ingestion infrastructure, cloud hosting, enterprise SSO, and billing remain outside initial scope.
+Public CVE matching needs component inventory, versions, relevance rules and noise control. Decide after the trial whether it belongs in the first useful MVP. Additional providers, separate ingestion infrastructure, cloud hosting, enterprise SSO and billing remain outside initial scope.

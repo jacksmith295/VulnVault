@@ -1,12 +1,12 @@
 # Dependabot ingestion
 
-Status: implemented and independently reviewed for PR preparation. The user authorised planning, review, implementation, iteration, and a PR, including higher-effort agents when warranted.
+Dependabot ingestion and local polling are implemented. GitHub is the current provider.
 
-The [service integration workflow](service-integrations-plan.md) supersedes this slice's workspace-level repository UI. Installation authorisation remains shared; repository setup, controls and status belong to each service.
+The [service integration workflow](service-integrations-plan.md) defines the current repository UI. Installation authorisation remains shared; repository setup, controls and status belong to each service.
 
-## First working slice
+## Scope
 
-Connect a dedicated GitHub App to a workspace, link existing GitHub repository URLs to that installation, and import real Dependabot dependency alerts into service findings. Add automatic local polling and Sync now using the same bounded sync path. Retain support for future providers through explicit provider/source identities, without a plugin framework, message broker, cloud service, or webhook endpoint.
+A dedicated GitHub App is bound to a workspace; existing service GitHub repository links map to its installation. Real Dependabot alerts import as findings. Automatic local polling and Sync now use the same bounded sync path. Retain support for future providers through explicit provider/source identities, without a plugin framework, message broker, cloud service, or webhook endpoint.
 
 Owners/admins manage and sync connections. Members can read provenance only through findings in services their groups grant access to. GitHub authentication remains separate from VulnVault login.
 
@@ -16,17 +16,17 @@ The self-hosting operator supplies optional GITHUB_APP_ID and GITHUB_APP_PRIVATE
 
 An explicit host command binds an app installation to a workspace. It verifies app identity, account ID/login, installation identity, suspension, and Dependabot read permission through the app-authenticated API. It must reject installation reassignment to another workspace and app changes on reconnect. This operator grant supplies the authorization that an installation ID or setup redirect alone cannot prove. The browser may manage only its already-bound workspace integration and may never enumerate the operator app's other installations. OAuth, automatic App registration, and public installation callbacks are deferred.
 
-The bootstrap command accepts a workspace slug and repository full name, finds that repository's installation, and connects matching existing service repository links in that workspace. Live setup will target the existing VulnVault service. No fake Dependabot findings or reuse of connector credentials.
+The bootstrap command accepts a workspace slug and repository full name, finds that repository's installation, and connects matching existing service repository links in that workspace. Operator setup is explicit and scoped; credentials are independent of other connectors.
 
-## Additive data design
+## Data model
 
-Three tables and the minimum composite uniqueness indexes needed for foreign keys:
+The additive migration introduced three tables and the composite uniqueness indexes needed for foreign keys:
 
 - workspace_integration: stable ID, workspace, provider, app/installation/account IDs and account login, enabled/version, and installation-wide rate-limit-until. Unique installation identity cannot move between workspaces. Disconnect disables, rather than deleting, the connection; reconnect reuses its ID.
 - integration_repository: workspace/integration/service and existing service_repository link, immutable GitHub repository ID and current full name, enabled/version, next attempt, last attempt/success, bounded error category, failures, and fenced lease token/expiry. Enforce service/integration/repository-link ownership with composite foreign keys. Removal of a repository link removes its live mapping atomically through its foreign key, while retaining findings and provenance. Re-adding a mapping cannot duplicate alerts.
 - finding_source: one source association per finding, workspace/service ownership enforced by composite keys, provider/source kind, repository ID, alert number, current upstream state/timestamps, package/ecosystem/manifest, GHSA/CVE, vulnerable range and first patched version, current upstream summary/severity, canonical source URL, and last seen. Uniqueness is per service + source kind + immutable repository ID + alert number, independent of removable mapping/integration row IDs. Retain provenance across disconnect, repository removal, and reconnect.
 
-No existing data reset/backfill is required. Existing manual findings have no source row. Generate an additive Drizzle migration, inspect SQL, test upgrading the existing test database, and apply to development only after those checks. Live imports are authorised by the user; use only the intended workspace/service for the first verification.
+No existing data reset/backfill is required. Existing manual findings have no source row. The additive migration preserved existing data. Scope live setup to the operator's intended workspace and service.
 
 ## Finding lifecycle
 
@@ -50,18 +50,16 @@ Use explicit current API version 2026-03-10, validated bounded responses, reques
 
 ## UI and entry points
 
-- Workspace Integrations page: owner/admin only, installation identity/status, linked repositories, last success/failure, Connect repository from existing service links, disable/disconnect and Sync now. Use existing shared components, responsive widths, Suspense/skeleton boundaries, and motion conventions.
+- Workspace connections: owner/admin installation identity, setup guidance and global enable/disable. Service integrations: repository setup, mapping controls, sync status and Sync now, including clear disabled/previous-App states. See the [service integration reference](service-integrations-plan.md).
 - Finding detail: source provenance and upstream state, available only through existing authorized service/finding reads.
 - Server Actions: authenticated management/sync, authoritative validation, expected versions for configuration changes, workspace-first authorization.
 - Host CLI: operator bootstrap, private-key configuration, optional one-shot sync. Background worker: due jobs and safe status logging. No new public callback or ingestion HTTP endpoint.
 
-## Verification and review
-
-Review the plan before coding and the implementation before PR creation; obtain a fresh exact-head published review afterward. Use high effort for security/concurrency review where useful and medium for bounded implementation.
+## Verification boundaries
 
 Provider tests cover JWT claims/signature, bounded and schema-validated API responses, pagination, redirects/origin restrictions, timeouts, metadata identity mismatch, installation validation, and rate-limit parsing. PostgreSQL tests cover tenant/role/group isolation, source uniqueness and preserved local fields, all upstream states, concurrent/repeated sync, stale lease fencing, disconnect/reconnect during fetch, repository remove/re-add and rename/path reuse, archive during fetch, partial-page rollback, and backoff that Sync now cannot bypass. Include signed-out/unverified and member management failures. Use isolated test data and the separate database; never destructive tests on development data.
 
-Browser tests cover setup guidance without credentials, connection/mapping controls, safe errors and pending state, provenance visibility, and existing responsive/auth/group/finding regressions. Test provider responses through an injected test transport or boundary mock, never a production localhost API override. Run persistence and browser suites sequentially, lint, TypeScript, production build, skill/hook checks as appropriate. Then attempt a genuine VulnVault import using operator-provided App credentials; distinguish imported alerts, zero alerts, disabled upstream features, and unavailable credentials accurately.
+Browser tests cover setup guidance without credentials, connection/mapping controls, safe errors and pending state, provenance visibility, and existing responsive/auth/group/finding regressions. Test provider responses through an injected test transport or boundary mock, never a production localhost API override. Live checks must distinguish imported alerts, zero alerts, disabled upstream features and unavailable credentials accurately.
 
 ## Sources checked
 
@@ -71,16 +69,14 @@ Browser tests cover setup guidance without credentials, connection/mapping contr
 - https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app
 - https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api
 
-## Design review outcome
+## Important failure cases
 
-High-effort security review approved the design. Reconnect must reuse workspace/app/account identity, validate any replacement installation, and invalidate prior generations/leases. Every finalizer checks token, generation, and database-clock expiry, including expired but unreplaced jobs. Each commit covers one mapping/service. Sync now works without the worker. The first live import targets only the existing VulnVault service; report scope before importing if bootstrap matches more than one link.
+Reconnect reuses workspace/app/account identity, validates a replacement installation and invalidates prior generations/leases. Every finalizer checks token, generation and database-clock expiry, including expired but unreplaced jobs. Each commit covers one mapping/service. Sync now works without the worker.
 
-## Implementation review and verification
+Public repository metadata must be followed by repository-scoped token validation. Older overlapping source snapshots must not regress newer upstream metadata. Worker failures are delayed and one-shot failures terminate nonzero. Command cleanup handles configuration/connection failures. Host provisioning lives in a Node-compatible operator module, separate from Next.js request APIs.
 
-High-effort implementation review identified and resolved three important cases: public repository metadata must be followed by repository-scoped token validation, older overlapping source snapshots must not regress newer upstream metadata, and worker failures must be delayed with one-shot failures terminating nonzero. Both command cleanup paths handle configuration/connection failures safely. Host provisioning lives in a Node-compatible operator module, separate from Next.js request APIs.
+## Historical verification
 
-Lint, TypeScript, a warning-free production build, all 112 automated tests, and all 23 Chromium tests passed. Provider/configuration tests use generated test keys and injected transports. Browser/test processes explicitly clear host GitHub credentials; no test fixture can use the real installation. The additive migration passed against the isolated database before application to local development. Existing data was preserved.
+The original delivery passed 112 automated tests and 23 Chromium tests, plus lint, TypeScript and build. Generated test keys and injected transports isolated provider tests; browser/test processes cleared host GitHub credentials. The migration was checked in the separate database before local application, preserving existing records.
 
-A real GitHub App installation was authenticated and bound to the existing VulnVault service only. The initial attempt correctly recorded unavailable access while upstream Dependabot alerts were disabled. After the user enabled alerts, real findings were imported and source refresh/reconnect was exercised. No synthetic findings were inserted into development data. App secrets remain outside version control.
-
-Live verification finished with three imported findings (two medium, one low). GitHub added one alert while its initial analysis was populating; a subsequent reconnect and full sync imported zero new findings. The scoped local polling worker was started for the VulnVault workspace.
+A real installation was bound only to the existing VulnVault service. Disabled upstream alerts initially produced an unavailable-access result. After alerts were enabled, live verification imported three findings and exercised refresh/reconnect; a subsequent full sync imported no duplicates. These are historical results, not a fresh test run or a promise about current upstream alert counts.
