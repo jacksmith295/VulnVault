@@ -1,11 +1,11 @@
 # Manual findings
 
-Status: merged in PR 6. The scope includes the schema, statuses, transitions, archived-service read-only policy, and no deletion for any role. PR 7 adds [group-based service access and the workspace-first permission lock](service-access-groups-plan.md).
+Manual findings are implemented. [Service access groups](service-access-groups-plan.md) govern visibility and workspace-first locking.
 
 ## Ownership and experience
 
-- Every finding belongs to exactly one service. Its service cannot be changed after creation in this slice. The same underlying vulnerability may have separate findings in different services, with independent statuses, notes, and resolution dates. No global CVE deduplication is introduced.
-- Add a findings section to service details, with list, create, detail, and edit flows. Start with a simple list; the board and assignment are a later slice.
+- Every finding belongs to exactly one service. Its service cannot be changed after creation. The same underlying vulnerability may have separate findings in different services, with independent statuses, notes, and resolution dates. No global CVE deduplication is introduced.
+- Service details expose findings with create, detail and edit flows. The [workspace board](findings-board-plan.md) and [bounded service list](triage-discovery-plan.md) provide discovery; assignment remains deferred.
 - Routes: `/w/[workspaceSlug]/services/[serviceId]/findings/new`, `/findings/[findingId]`, and `/findings/[findingId]/edit`, all under the same service route prefix.
 - All known workspace roles can create and update findings within services their groups grant access to; owners/admins retain access to all services. Service management remains owner/admin-only. No role may delete findings. Rejection and resolution retain the record.
 - Agreed archived-service policy: findings remain readable, but creating or updating them requires the service to be active. Members must ask an owner/admin to restore an archived service first.
@@ -17,7 +17,7 @@ Required: title, description, service, and severity. Optional: reference URLs an
 
 - Severity: Critical, High, Medium, Low, Informational.
 - Status: New, Triaged, In progress, Resolved, Rejected, Accepted risk.
-- Creation always starts at New. Editing permits transitions between any of these statuses, including reopening; there is no additional workflow restriction in this slice.
+- Creation always starts at New. Editing permits transitions between any of these statuses, including reopening; there is no additional workflow restriction.
 - Keep remediation notes optional in every status, as agreed. Rejected and Accepted risk remain distinct from Resolved and do not mean the vulnerability was fixed.
 - Set the resolution timestamp when entering Resolved, preserve it while editing a finding that remains Resolved, and clear it when moving out of Resolved.
 - Limits: trimmed title 2 to 200 characters; required description up to 20,000 characters; optional remediation notes up to 20,000 characters; at most 20 reference URLs, each at most 2,048 characters before and after normalization.
@@ -26,7 +26,7 @@ Required: title, description, service, and severity. Optional: reference URLs an
 
 ## Approved schema
 
-Use an additive migration with two new tables. Existing data and migrations remain intact.
+The additive findings migration introduced these tables while preserving existing data.
 
 | Table | Fields and constraints |
 | --- | --- |
@@ -52,8 +52,6 @@ Integration tests use isolated PostgreSQL and cover all roles, signed-out/unveri
 
 Browser tests cover manual create/view/edit, severity/status controls, references and notes, retained stale edits, member workflows without delete controls, archived-service read-only views, independent per-service resolutions, mobile layout, keyboard controls, and both themes. Retain existing authentication, workspace, service, theme, and hook regressions.
 
-Run lint, TypeScript, hook tests, relevant integration tests, production build, and browser checks. Use separate medium-reasoning implementation and review agents, address findings, and open a PR for user review. No deployment or main merge is included.
-
 ## Deferred scope
 
-Board/drag-and-drop, assignment, invitations, automatic ingestion, global vulnerability matching, attachments, rich text, notifications, full activity history, and workflow customization. Finding deletion is prohibited rather than a planned feature.
+Assignment, invitations, global vulnerability matching, attachments, rich text, notifications, full activity history and workflow customization. [Board interactions](board-interactions-plan.md) and [Dependabot ingestion](dependabot-ingestion-plan.md) are implemented. Finding deletion is prohibited rather than a planned feature.

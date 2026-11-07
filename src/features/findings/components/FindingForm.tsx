@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { FormLayout } from "@/components/layout";
+import { fieldErrors } from "@/lib/form-validation";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/field";
 import { FormMessage } from "@/components/ui/form-message";
@@ -44,13 +45,31 @@ function FindingFormFields({ slug, serviceId, finding }: Props) {
   const [status, setStatus] = useState<string | null>(finding?.status ?? "new");
   const [notes, setNotes] = useState(finding?.remediationNotes ?? "");
   const [urls, setUrls] = useState(finding?.referenceUrls.join("\n") ?? "");
-  const [validation, setValidation] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const formRef = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    const fields = [
+      ["title", "finding-title"],
+      ["description", "finding-description"],
+      ["severity", "finding-severity"],
+      ["status", "finding-status"],
+      ["remediationNotes", "finding-notes"],
+      ["referenceUrls", "finding-references"],
+    ];
+    const firstInvalid = fields.find(([field]) => errors[field]);
+    if (firstInvalid) {
+      formRef.current
+        ?.querySelector<HTMLElement>(`#${firstInvalid[1]}`)
+        ?.focus();
+    }
+  }, [errors]);
   const [state, action, pending] = useActionState(
     saveFindingAction.bind(null, slug, serviceId, finding?.id ?? null, version),
     { error: "", conflict: false },
   );
   return (
     <FormLayout
+      ref={formRef}
       action={action}
       width="narrow"
       aria-busy={pending}
@@ -69,11 +88,11 @@ function FindingFormFields({ slug, serviceId, finding }: Props) {
         const parsed = (
           finding ? editFindingSchema : createFindingSchema
         ).safeParse(input);
-        setValidation(parsed.success ? "" : parsed.error.issues[0].message);
+        setErrors(parsed.success ? {} : fieldErrors(parsed.error.issues));
         if (!parsed.success) event.preventDefault();
       }}
     >
-      <FormField id="finding-title" label="Title">
+      <FormField error={errors.title} id="finding-title" label="Title">
         <Input
           id="finding-title"
           name="title"
@@ -84,7 +103,11 @@ function FindingFormFields({ slug, serviceId, finding }: Props) {
           onChange={(event) => setTitle(event.target.value)}
         />
       </FormField>
-      <FormField id="finding-description" label="Description">
+      <FormField
+        error={errors.description}
+        id="finding-description"
+        label="Description"
+      >
         <Textarea
           id="finding-description"
           name="description"
@@ -95,7 +118,7 @@ function FindingFormFields({ slug, serviceId, finding }: Props) {
           onChange={(event) => setDescription(event.target.value)}
         />
       </FormField>
-      <FormField id="finding-severity" label="Severity">
+      <FormField error={errors.severity} id="finding-severity" label="Severity">
         <Select
           id="finding-severity"
           name="severity"
@@ -110,7 +133,7 @@ function FindingFormFields({ slug, serviceId, finding }: Props) {
         />
       </FormField>
       {finding && (
-        <FormField id="finding-status" label="Status">
+        <FormField error={errors.status} id="finding-status" label="Status">
           <Select
             id="finding-status"
             name="status"
@@ -126,6 +149,7 @@ function FindingFormFields({ slug, serviceId, finding }: Props) {
       )}
       <FormField
         id="finding-notes"
+        error={errors.remediationNotes}
         label="Remediation notes"
         description="Optional. Record remediation work or the reason for a status decision."
       >
@@ -140,6 +164,7 @@ function FindingFormFields({ slug, serviceId, finding }: Props) {
       </FormField>
       <FormField
         id="finding-references"
+        error={errors.referenceUrls}
         label="Reference URLs"
         description="Optional. Enter up to 20 HTTP or HTTPS URLs, one per line. Credentials are not allowed."
       >
@@ -151,9 +176,7 @@ function FindingFormFields({ slug, serviceId, finding }: Props) {
           onChange={(event) => setUrls(event.target.value)}
         />
       </FormField>
-      {(validation || state.error) && (
-        <FormMessage tone="error">{validation || state.error}</FormMessage>
-      )}
+      {state.error && <FormMessage tone="error">{state.error}</FormMessage>}
       {state.conflict && (
         <TextLink
           reloadDocument

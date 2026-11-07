@@ -1,28 +1,28 @@
 # Service management
 
-Status: merged in PR 3. Includes the approved schema, permissions, version checks, and archive/restore lifecycle. PR 7 supersedes the original workspace-wide member access with [service access groups](service-access-groups-plan.md). Invitations remain separate.
+Service management is implemented, including version checks and archive/restore. [Service access groups](service-access-groups-plan.md) govern member visibility.
 
 ## Experience
 
-- The workspace landing page lists active services and offers an archived-services view. Owners/admins see Create service; members see only services their groups grant access to.
+- The Services page at `/w/[workspaceSlug]/services` lists active services and offers an archived-services view. The workspace home is the findings board. Owners/admins see Create service; members see only services their groups grant access to.
 - Creation asks for a name, optional description, and zero or more repository URLs. No repository integration credentials or automatic connection is required.
 - Each service has a detail page showing its description, repository links, and archive status. Owners/admins can edit active services, archive them, and restore archived services. Editing an archived service requires restoring it first.
 - Archive and restore are explicit actions. Archiving removes a service from the default list while preserving its details and repository associations. No permanent deletion is exposed.
 - Continue to use the shared app header and workspace selector. Routes carry the workspace slug explicitly: `/w/[workspaceSlug]`, `/w/[workspaceSlug]/services/new`, `/w/[workspaceSlug]/services/[serviceId]`, and `/w/[workspaceSlug]/services/[serviceId]/edit`.
 - Service names may repeat. Stable IDs identify services, so renaming never changes their URLs.
 
-## Proposed schema
+## Data model
 
-Add two tables through a reviewed additive Drizzle migration. Leave existing authentication and workspace tables and data intact.
+The additive service migration introduced these tables without resetting existing authentication or workspace data.
 
 | Table | Columns and constraints |
 | --- | --- |
 | `service` | Opaque text UUID primary key, non-null workspace ID referencing `organization`, required name, optional description, nullable `archivedAt`, creation/update timestamps, integer `version` starting at 1. Index workspace ID and archive state for listing. Workspace foreign key restricts physical deletion. |
 | `service_repository` | Opaque text UUID primary key, required service ID referencing `service`, required URL. Unique pair of service ID and normalized URL. Physical service deletion cascades to its associations, but no application operation physically deletes a service. |
 
-Repository ownership is derived through the service. The same URL may appear on different services. Do not duplicate workspace identity in repository rows or introduce provider-specific identities before integration requirements are designed.
+Repository ownership is derived through the service. The same URL may appear on different services. Provider-specific identities live in the [integration model](dependabot-ingestion-plan.md#data-model).
 
-Proposed validation limits:
+Validation limits:
 
 - Name: trimmed, 2 to 100 characters. Description: optional, at most 5,000 characters; blank becomes absent.
 - Repository URLs: optional, at most 20 per service, each at most 2,048 characters. Support HTTP/HTTPS, including self-hosted hostnames and ports. Require a nonempty repository path.
@@ -48,6 +48,4 @@ Integration coverage against isolated PostgreSQL includes migration preservation
 
 Browser coverage includes create/view/edit, multiple repository links, member read-only views, archive hiding from the default list, archived browsing and restore, stale-form recovery, cross-workspace denial, and existing workspace/header/authentication regressions.
 
-Run lint, TypeScript checks, relevant integration tests, a production build, and browser checks. Use medium reasoning for implementation and independent design/code review. Address findings before opening a PR for the user's approval.
-
-Findings, scanners, provider connections, invitations, member administration, search/filter systems beyond archive state, permanent deletion, and deployment are outside this slice.
+Provider connections are described in the [service integration reference](service-integrations-plan.md). Invitations, member administration and permanent service deletion remain deferred.

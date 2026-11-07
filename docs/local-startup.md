@@ -1,6 +1,6 @@
 # Start the local installation
 
-Status: implemented, independently reviewed and locally verified on the feature branch, awaiting merge. This command is for an existing Linux installation using Docker Compose and a user systemd session. Complete the [local hosting setup](local-hosting.md) first, including Tailscale sign-in or the LAN address. It does not provision a new installation.
+The startup command is implemented and merged. This command is for an existing Linux installation using Docker Compose and a user systemd session. Complete the [local hosting setup](local-hosting.md) first, including Tailscale sign-in or the LAN address. It does not provision a new installation.
 
 From the installation's checkout, run:
 

@@ -274,6 +274,14 @@ for (const theme of ["Light", "Dark"] as const) {
           (element) => element.closest("label")!.getBoundingClientRect().height,
         ),
       ).toBeGreaterThanOrEqual(24);
+      const uncheckedBackground = await checkbox.evaluate(
+        (element) => getComputedStyle(element).backgroundColor,
+      );
+      await checkbox.check();
+      await expect(checkbox).toBeChecked();
+      await expect
+        .poll(() => checkbox.evaluate((element) => getComputedStyle(element).backgroundColor))
+        .not.toBe(uncheckedBackground);
       await audit(page, `${theme}: selected group checkboxes`);
 
       await page.goto(path);
@@ -304,12 +312,27 @@ for (const theme of ["Light", "Dark"] as const) {
       await expect(
         page.getByRole("menuitem", { name: "Triaged", exact: true }),
       ).toBeVisible();
+      const currentStatus = page.getByRole("menuitem", { name: "New", exact: true });
+      await expect(currentStatus).toBeDisabled();
+      await expect(currentStatus).toHaveCSS("opacity", "0.5");
       await audit(page, `${theme}: finding status menu`);
       await page.keyboard.press("Escape");
       await expect(status).toBeFocused();
 
       await page.setViewportSize({ width: 320, height: 800 });
       await noHorizontalOverflow(page);
+      const activeTab = page.getByRole("tab", { name: "New (1)", exact: true });
+      await expect(activeTab).toHaveAttribute("aria-selected", "true");
+      const inactiveTab = page.getByRole("tab", { name: "Triaged (0)", exact: true });
+      const inactiveBackground = await inactiveTab.evaluate(
+        (element) => getComputedStyle(element).backgroundColor,
+      );
+      expect(await activeTab.evaluate((element) => getComputedStyle(element).backgroundColor))
+        .not.toBe(inactiveBackground);
+      await page.screenshot({
+        path: test.info().outputPath(`board-mobile-${theme.toLowerCase()}.png`),
+        fullPage: true,
+      });
       const filters = page.getByRole("button", { name: /^Filters/u });
       await filters.focus();
       await filters.press("Enter");
@@ -362,6 +385,7 @@ for (const theme of ["Light", "Dark"] as const) {
         .getByRole("status")
         .filter({ hasText: "Audited vulnerability moved to Triaged." });
       await expect(moved).toBeVisible();
+      await expect(moved).toHaveCSS("animation-name", "feedback");
       await expect(
         page.getByRole("link", { name: "Audited vulnerability", exact: true }),
       ).toHaveCount(0);

@@ -10,9 +10,9 @@ description: Build or change VulnVault pages, forms, shared components, styling,
 Inspect existing shared components before adding only the components or variants the agreed change needs.
 
 - Keep authorised data loading and composition in `src/app`; domain presentation and interaction belong in `src/features/*/components`.
-- Pages and features compose reusable TSX components. Shared `src/components/ui` and `src/components/layout` definitions own semantic HTML, Tailwind classes, and repeated page/form structure. The root document layout may contain its required `html` and `body`.
+- Routes compose TSX components. Shared UI/layout definitions own recurring controls and structure; `src/features/*/components` may own semantic HTML and Tailwind for domain presentation. Promote patterns to shared components only when other features need them. The root document layout may contain its required `html` and `body`.
 - Reuse styled interactive wrappers in `components/ui`; build new ones on installed Base UI primitives for keyboard, focus, and dismissal behaviour. Keep layout/text components server-compatible and add client boundaries only for interaction.
-- Expose typed variants for presentation differences instead of cosmetic `className` overrides in pages or features. Keep semantic theme tokens in `src/app/globals.css`.
+- Prefer typed variants for recurring presentation differences; avoid repeated cosmetic overrides at call sites. Keep semantic theme tokens in `src/app/globals.css`.
 - Preserve the green identity in both themes and the existing provider's persisted System, Light, and Dark preferences. Reuse severity badges/tokens consistently with visible labels; colour alone must not convey risk.
 
 ## State, loading, and layout
@@ -37,7 +37,7 @@ Inspect existing shared components before adding only the components or variants
 Read only the relevant sections. These documents also contain historical plans and verification results; those are context, not instructions to repeat completed migrations or expand the current scope.
 
 - For component responsibilities or form refactors, consult [UI foundation: component layers and regression requirements](../../../docs/ui-foundation-plan.md#component-layers). Preserve external form validation and the original dirty-form version/identity contract.
-- For responsive layouts, filters, or drawers, read [responsive layout responsibilities and mobile board filters](../../../docs/responsive-ui-plan.md#page-and-component-responsibilities). This covers draft retention, same-URL Clear/history, hidden controls, nested overlays, breakpoint focus/scroll cleanup, and loading geometry. Consult its motion follow-up when changing transitions.
+- For responsive layouts, filters, or drawers, read [responsive layout responsibilities and mobile board filters](../../../docs/responsive-ui-plan.md#page-and-component-responsibilities). This covers draft retention, same-URL Clear/history, hidden controls, nested overlays, breakpoint focus/scroll cleanup, and loading geometry. Consult its motion section when changing transitions.
 - For findings board tiles or drag interactions, read [board interactions](../../../docs/board-interactions-plan.md). Preserve accessible keyboard/non-drag alternatives, safe cancellation, server-owned ordering/versions, the shared pending mutation gate, and truthful save feedback. Cancel owned animations on cleanup. Tile lift/reflow and drag-library cleanup mechanics apply to that board, not every UI component.
 - For accessibility changes or expanded checks, read [accessibility findings and verification limits](../../../docs/accessibility-review.md#findings-and-changes).
 

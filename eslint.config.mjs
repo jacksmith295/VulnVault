@@ -7,19 +7,19 @@ const eslintConfig = defineConfig([
   ...nextTs,
   {
     files: ["src/app/**/*.{jsx,tsx}", "src/features/**/*.{jsx,tsx}"],
-    ignores: ["src/app/layout.tsx"],
+    ignores: ["src/app/layout.tsx", "src/features/*/components/**/*.{jsx,tsx}"],
     rules: {
       "no-restricted-syntax": [
         "error",
         {
           selector: "JSXOpeningElement[name.type='JSXIdentifier'][name.name=/^[a-z]/]",
           message:
-            "Compose shared TSX components here. Keep semantic HTML in components/ui or components/layout.",
+            "Compose TSX components here. Keep semantic HTML in shared or feature component definitions.",
         },
         {
           selector: "JSXAttribute[name.name='className']",
           message:
-            "Keep presentation in shared component definitions. Use component variants instead of className overrides.",
+            "Keep presentation in component definitions. Use component variants instead of className overrides.",
         },
       ],
     },

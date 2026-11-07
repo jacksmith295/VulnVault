@@ -46,4 +46,3 @@ export function FormField({
     </Field.Root>
   );
 }
-export const FieldLabel = Field.Label;

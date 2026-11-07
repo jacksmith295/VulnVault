@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Inline, Stack } from "@/components/layout";
-import { StatusBoard } from "@/components/layout/board";
+import { StatusBoard } from "./StatusBoard";
 import { Badge, SeverityBadge, type SeverityTone } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,7 +11,7 @@ import {
   BoardDragCard,
   BoardDragList,
   BoardDragProvider,
-} from "@/components/ui/board-drag";
+} from "./board-drag";
 import { FormMessage } from "@/components/ui/form-message";
 import {
   Menu,
@@ -263,6 +263,13 @@ function FindingBoardCollection({
     Partial<Record<FindingStatus, boolean>>
   >({});
   const [resetting, setResetting] = useState(false);
+  const [errors, setErrors] = useState<Partial<Record<FindingStatus, string>>>(
+    {},
+  );
+  const [pageStatus, setPageStatus] = useState<
+    Partial<Record<FindingStatus, string>>
+  >({});
+  const collectionRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
   const generation = useRef(0);
   const blocked = useRef(false);
@@ -292,6 +299,8 @@ function FindingBoardCollection({
     const requestGeneration = generation.current;
     requests.current.add(status);
     setLoading((previous) => ({ ...previous, [status]: true }));
+    setErrors((previous) => ({ ...previous, [status]: undefined }));
+    setPageStatus((previous) => ({ ...previous, [status]: undefined }));
     try {
       const query = new URLSearchParams({
         ...filters,
@@ -302,21 +311,41 @@ function FindingBoardCollection({
       const response = await fetch(`/w/${slug}/findings/more?${query}`, {
         cache: "no-store",
       });
-      if (!response.ok) throw new Error("Could not load findings");
-      const result = (await response.json()) as MoreBoardFindings;
+      const accessChanged =
+        response.redirected ||
+        response.status === 401 ||
+        response.status === 403;
+      if (!accessChanged && !response.ok)
+        throw new Error("Could not load findings");
+      const result: MoreBoardFindings = accessChanged
+        ? { reset: true }
+        : await response.json();
       if (
         !active.current ||
         requestGeneration !== generation.current ||
         blocked.current
       )
         return;
-      if (result.reset) {
+      if (result.reset || result.scopeKey !== scopeKey) {
+        if (collectionRef.current?.contains(document.activeElement)) {
+          // Filters survive both board revisions and changes to its access scope.
+          ["filter-desktop-q", "mobile-filters-trigger"]
+            .map((id) => document.getElementById(id))
+            .find((element) => element && element.getClientRects().length > 0)
+            ?.focus();
+        }
         active.current = false;
         setColumns([]);
         setResetting(true);
         router.refresh();
         return;
       }
+      setPageStatus((previous) => ({
+        ...previous,
+        [status]: result.nextCursor
+          ? `More ${statusLabels[status]} findings loaded.`
+          : `All ${statusLabels[status]} findings loaded.`,
+      }));
       setColumns((previous) =>
         previous.map((column) =>
           column.status !== status
@@ -342,10 +371,10 @@ function FindingBoardCollection({
         requestGeneration === generation.current &&
         !blocked.current
       ) {
-        active.current = false;
-        setColumns([]);
-        setResetting(true);
-        router.refresh();
+        setErrors((previous) => ({
+          ...previous,
+          [status]: `Unable to load more ${statusLabels[status]} findings. Try again.`,
+        }));
       }
     } finally {
       requests.current.delete(status);
@@ -365,59 +394,90 @@ function FindingBoardCollection({
       </Stack>
     );
   return (
-    <BoardDragProvider
-      disabled={pending || resetting}
-      onDraggingChange={draggingChanged}
-      onMove={(id, status) => {
-        const finding = columns
-          .flatMap((column) => column.findings)
-          .find((item) => item.id === id);
-        if (
-          finding &&
-          statuses.includes(status as FindingStatus) &&
-          finding.status !== status
-        )
-          moveFinding(finding, status as FindingStatus);
-      }}
-    >
-      <StatusBoard
-        selectedStatus={selectedStatus}
-        onStatusChange={onStatusChange}
-        columns={columns.map((column) => ({
-          status: column.status,
-          label: `${statusLabels[column.status]} (${column.total})`,
-          regionLabel: `${statusLabels[column.status]} findings`,
-          content: (
-            <BoardDragList>
-              {column.findings.map((finding) => (
-                <FindingBoardCard
-                  key={finding.id}
-                  slug={slug}
-                  finding={finding}
-                  pending={pending}
-                  dragging={dragging}
-                  changeStatus={moveFinding}
-                />
-              ))}
-              {column.total === 0 && (
-                <Text size="sm" tone="muted">
-                  No matching findings.
+    <Stack grow ref={collectionRef}>
+      <BoardDragProvider
+        disabled={pending || resetting}
+        onDraggingChange={draggingChanged}
+        onMove={(id, status) => {
+          const finding = columns
+            .flatMap((column) => column.findings)
+            .find((item) => item.id === id);
+          if (
+            finding &&
+            statuses.includes(status as FindingStatus) &&
+            finding.status !== status
+          )
+            moveFinding(finding, status as FindingStatus);
+        }}
+      >
+        <StatusBoard
+          selectedStatus={selectedStatus}
+          onStatusChange={onStatusChange}
+          columns={columns.map((column) => ({
+            status: column.status,
+            label: statusLabels[column.status],
+            total: column.total,
+            regionLabel: `${statusLabels[column.status]} findings`,
+            content: (
+              <BoardDragList>
+                {column.findings.map((finding) => (
+                  <FindingBoardCard
+                    key={finding.id}
+                    slug={slug}
+                    finding={finding}
+                    pending={pending}
+                    dragging={dragging}
+                    changeStatus={moveFinding}
+                  />
+                ))}
+                {column.total === 0 && (
+                  <Text size="sm" tone="muted">
+                    No matching findings.
+                  </Text>
+                )}
+                {errors[column.status] && (
+                  <FormMessage>{errors[column.status]}</FormMessage>
+                )}
+                {(column.nextCursor ||
+                  initialColumns.find(
+                    (initial) => initial.status === column.status,
+                  )?.nextCursor) && (
+                  <Button
+                    variant="outline"
+                    focusableWhenDisabled
+                    disabled={
+                      !column.nextCursor ||
+                      loading[column.status] ||
+                      pending ||
+                      dragging
+                    }
+                    aria-label={
+                      column.nextCursor
+                        ? `${errors[column.status] ? "Retry loading" : "Load more"} ${statusLabels[column.status]} findings`
+                        : `All findings loaded for ${statusLabels[column.status]}`
+                    }
+                    onClick={() =>
+                      column.nextCursor &&
+                      loadMore(column.status, column.nextCursor)
+                    }
+                  >
+                    {loading[column.status]
+                      ? "Loading…"
+                      : !column.nextCursor
+                        ? "All findings loaded"
+                        : errors[column.status]
+                          ? "Retry"
+                          : "Load more"}
+                  </Button>
+                )}
+                <Text role="status" aria-live="polite" size="sm" tone="muted">
+                  {pageStatus[column.status]}
                 </Text>
-              )}
-              {column.nextCursor && (
-                <Button
-                  variant="outline"
-                  disabled={loading[column.status] || pending || dragging}
-                  aria-label={`Load more ${statusLabels[column.status]} findings`}
-                  onClick={() => loadMore(column.status, column.nextCursor!)}
-                >
-                  {loading[column.status] ? "Loading…" : "Load more"}
-                </Button>
-              )}
-            </BoardDragList>
-          ),
-        }))}
-      />
-    </BoardDragProvider>
+              </BoardDragList>
+            ),
+          }))}
+        />
+      </BoardDragProvider>
+    </Stack>
   );
 }

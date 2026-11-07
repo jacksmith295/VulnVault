@@ -1,22 +1,22 @@
 # Service access groups
 
-Status: merged in PR 7. This slice establishes access control before the workspace findings board.
+Service access groups are implemented. This reference defines the shared authorisation and concurrency protocol.
 
-## Agreed behaviour
+## Behaviour
 
 - Each workspace has a protected default group named Everyone. Membership is implicit: every current workspace member belongs automatically. Workspace registration remains separate from account registration.
 - Services with no specific groups assigned use Everyone. Assigning one or more custom groups replaces the default access; membership in any assigned group grants access.
 - Owners and admins initially retain access to every service and manage groups and service access. Ordinary members can read accessible services and create/update their findings, but cannot manage services or groups.
 - A custom group with no members is valid. A service assigned only to empty groups is accessible to owners/admins only.
 - Returning a restricted service to default access requires an explicit confirmation that every workspace member will gain access. Removing a group member revokes the access granted by that group, but another assigned group may still grant access.
-- Groups cannot be deleted in this slice. Everyone cannot be renamed or have its membership edited. Invitations, workspace membership administration, group-specific roles, and nested groups are deferred.
+- Group deletion is deferred. Everyone cannot be renamed or have its membership edited. Invitations, workspace membership administration, group-specific roles, and nested groups are deferred.
 - Archived services obey the same access rules. Owners/admins can change their access without restoring them; their findings remain read-only until restoration.
 
 ## Data and migration
 
-Add workspace-owned groups, custom-group memberships, and custom-group service associations. Group memberships reference workspace membership IDs, so removing and rejoining a workspace does not revive old grants. Composite foreign keys enforce workspace consistency for associations.
+The model contains workspace-owned groups, custom-group memberships, and custom-group service associations. Group memberships reference workspace membership IDs, so removing and rejoining a workspace does not revive old grants. Composite foreign keys enforce workspace consistency for associations.
 
-Store the default group as a protected group record but keep its membership and service access implicit. Do not allow default membership rows or explicit default service assignments alongside custom groups. Enforce default uniqueness per workspace. Create the default group in the workspace creation transaction and backfill existing workspaces with an additive migration.
+Store the default group as a protected group record but keep its membership and service access implicit. Do not allow default membership rows or explicit default service assignments alongside custom groups. Enforce default uniqueness per workspace. The default group is created in the workspace creation transaction; an additive migration backfilled existing workspaces.
 
 Existing services keep their workspace-wide accessibility because they have no custom assignments. Preserve existing records and migrations; no database reset is needed.
 
@@ -35,10 +35,8 @@ Group edits match an expected group version. Service access changes match and in
 - Use existing shared TSX layouts and styled Base UI controls. Keep HTML and cosmetic styling in shared component definitions.
 - Use Next.js Server Actions for mutations, strict server validation, server-enforced permissions, and relevant path revalidation. Keep provider integrations independent.
 
-## Verification and delivery
+## Verification boundaries
 
 Use isolated PostgreSQL integration tests for default provisioning, upgrade preservation, multi-group access, owner/admin bypass, revoked access, workspace/member scope, rejoining, stale versions, default protection, rollback, and permission-change races. Check actual database constraints as well as application validation.
 
 Browser checks cover owner group creation/editing, member access before and after restriction/revocation, service access confirmation, multiple groups, stale forms, themes, and mobile layout. Retain existing authentication, workspace, service, findings, and hook regressions. Run integration and browser suites sequentially.
-
-Separate medium-reasoning agents implement and independently review changes. Run lint, TypeScript, production build, automated tests, browser tests, and staged hook checks. Commit and push a feature branch and open a PR for user review. The board follows in a separate slice, with authorised filters and counts, before drag-and-drop.

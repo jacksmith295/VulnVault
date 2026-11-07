@@ -34,7 +34,7 @@ try {
       const formatter = await eslint.loadFormatter("stylish");
       process.stderr.write(await formatter.format(results));
       process.stderr.write(
-        "\nPre-commit UI check failed. Fix the reported files and stage the fixes before committing. Shared HTML and styling belong in src/components/ui or src/components/layout.\n",
+        "\nPre-commit UI check failed. Fix the reported files and stage the fixes before committing. HTML and styling belong in shared components or src/features/*/components.\n",
       );
       process.exitCode = 1;
     }
